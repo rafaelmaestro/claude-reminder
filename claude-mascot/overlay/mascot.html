@@ -36,9 +36,11 @@
     'B': '#1f4e8c',  // fone
     'Y': '#f0b23c',  // capacete, lampada
     'A': '#9a9a9a',  // metal
-    'R': '#e03131'   // coracao
+    'R': '#e03131',  // coracao
+    'N': '#8a5a3b'   // madeira do bau
   };
-  var W = GRID.w, H = GRID.h, PW = GRID.pw, SW = GRID.sw, SH = GRID.sh;
+  var W = GRID.w, H = GRID.h, SW = GRID.sw, SH = GRID.sh;
+  var PW = GRID.pw, PH = GRID.ph, POFF = GRID.poff;
 
   // Sobra a direita suficiente para a camada de adereco (mais larga que o corpo)
   var REST_X = COLS - PW - 1;
@@ -87,7 +89,7 @@
   var propEl = document.getElementById('prop');
   var bodyCells = build(bodyEl, W, H);
   var symCells = build(symEl, SW, SH);
-  var propCells = build(propEl, PW, H);
+  var propCells = build(propEl, PW, PH);
 
   ground.style.height = CELL + 'px';
   ground.style.top = (GROUND_Y * CELL) + 'px';
@@ -102,10 +104,10 @@
 
     // Adereco anda colado no corpo: mesma posicao, mesmo espelhamento.
     if (f.prop) {
-      paint(propCells, PW, H, PROPS[f.prop]);
+      paint(propCells, PW, PH, PROPS[f.prop]);
       propEl.style.display = 'block';
       propEl.style.left = bodyEl.style.left;
-      propEl.style.top = bodyEl.style.top;
+      propEl.style.top = ((f.y - POFF) * CELL) + 'px';  // a grade do adereco sobe POFF linhas
       propEl.style.transform = 'none';  // espelhar jogaria a varinha dentro do corpo
     } else {
       propEl.style.display = 'none';
@@ -160,11 +162,11 @@
     return f;
   }
 
-  function wave(times, sym) {
-    var f = [];
+  function wave(times, sym, ms) {
+    var f = [], d = ms || 140;
     for (var i = 0; i < times; i++) {
-      f.push(at('front_up_happy', { y: BASE_Y - 1, sym: sym, symDy: -1, ground: 'narrow', ms: 120 }));
-      f.push(at('front_happy', { sym: sym, ms: 120 }));
+      f.push(at('front_up_happy', { y: BASE_Y - 1, sym: sym, symDy: -1, ground: 'narrow', ms: d }));
+      f.push(at('front_happy', { sym: sym, ms: d }));
     }
     return f;
   }
@@ -287,41 +289,79 @@
   ];
 
   // A conclusao tambem varia — so que sem loop: roda uma vez e vai embora.
+  // Ela e mais demorada que o pedido de proposito: e a unica chance de ser
+  // vista, entao precisa dar tempo de o olho chegar nela.
   var DONE_VARIANTS = [
-    { // check verde se desenhando
+    { // placa com o check: erguida acima da cabeca pelos dois bracos. Como ela
+      // esta nas maos, nenhum quadro muda a pose do braco — o que anima sao os
+      // olhos, o balanco e o pulo, que levam a placa junto.
+      prop: { front: 'sign', side: 'sign' },
       intro: [
-        at('front', { ms: 120 }),
-        at('front_happy', { sym: 'c1', ms: 80 }),
-        at('front_happy', { sym: 'c2', ms: 80 }),
-        at('front_happy', { sym: 'c3', ms: 130 })
-      ].concat(wave(3, 'c3')).concat([
-        at('front_wink', { sym: 'c3', ms: 240 }),
-        at('front_happy', { sym: 'c3', ms: 150 })
-      ])
+        at('front_up', { ms: 200 }),
+        at('front_up_happy', { ms: 240 }),
+        at('front_up_happy', { y: BASE_Y - 2, ground: 'narrow', ms: 150 }),
+        at('front_up_happy', { ms: 180 }),
+        at('front_up_happy', { x: REST_X - 1, ms: 170 }),
+        at('front_up_happy', { x: REST_X + 1, ms: 170 }),
+        at('front_up_blink', { ms: 120 }),
+        at('front_up_happy', { y: BASE_Y - 2, ground: 'narrow', ms: 150 }),
+        at('front_up_happy', { ms: 200 }),
+        at('front_up_wink', { ms: 340 }),
+        at('front_up_happy', { ms: 200 }),
+        at('front_up_blink', { ms: 120 }),
+        at('front_up_happy', { ms: 300 })
+      ]
     },
     { // coracao: de nada
       intro: [
-        at('front', { ms: 120 }),
-        at('front_wide', { sym: 'heart', ms: 130 }),
-        at('front_happy', { sym: 'heart', ms: 150 })
-      ].concat(wave(3, 'heart')).concat([
-        at('front_wink', { sym: 'heart', ms: 240 }),
-        at('front_happy', { sym: 'heart', ms: 150 })
+        at('front', { ms: 150 }),
+        at('front_wide', { sym: 'heart', ms: 200 }),
+        at('front_happy', { sym: 'heart', ms: 280 })
+      ].concat(wave(5, 'heart')).concat([
+        at('front_wink', { sym: 'heart', ms: 340 }),
+        at('front_happy', { sym: 'heart', ms: 200 }),
+        at('front_blink', { sym: 'heart', ms: 120 }),
+        at('front_happy', { sym: 'heart', ms: 320 })
       ])
     },
-    { // faiscas: a varinha esta na mao, entao o braco fica parado e quem
-      // estala e a propria varinha (wand_a / wand_b)
-      prop: { front: 'wand_a', side: 'wand_a' },
+    { // bau de tesouro: chega carregando o bau, poe no chao, abre e o ouro
+      // brilha. Sem pulo em nenhum quadro — o bau ficaria flutuando junto.
+      prop: { front: 'chest_closed', side: 'chest_closed' },
       intro: [
-        at('front', { ms: 120 }),
-        at('front_happy', { prop: 'wand_a', ms: 130 }),
-        at('front_happy', { prop: 'wand_b', ms: 130 }),
-        at('front_happy', { y: BASE_Y - 1, prop: 'wand_a', ground: 'narrow', ms: 120 }),
-        at('front_happy', { prop: 'wand_b', ms: 120 }),
-        at('front_happy', { y: BASE_Y - 2, prop: 'wand_a', ground: 'narrow', ms: 120 }),
-        at('front_happy', { prop: 'wand_b', ms: 120 }),
-        at('front_wink', { prop: 'wand_a', ms: 240 }),
-        at('front_happy', { prop: 'wand_b', ms: 150 })
+        at('front', { ms: 200 }),
+        at('front_wide', { prop: 'chest_closed', ms: 320 }),
+        at('front_wide', { prop: 'chest_open', ms: 240 }),
+        at('front_up_happy', { prop: 'chest_shine', ms: 200 }),
+        at('front_happy', { prop: 'chest_open', ms: 170 }),
+        at('front_up_happy', { prop: 'chest_shine', ms: 200 }),
+        at('front_happy', { prop: 'chest_open', ms: 170 }),
+        at('front_up_happy', { prop: 'chest_shine', ms: 200 }),
+        at('front_happy', { prop: 'chest_open', ms: 170 }),
+        at('front_up_happy', { prop: 'chest_shine', ms: 200 }),
+        at('front_wink', { prop: 'chest_shine', ms: 340 }),
+        at('front_happy', { prop: 'chest_open', ms: 200 }),
+        at('front_blink', { prop: 'chest_shine', ms: 120 }),
+        at('front_happy', { prop: 'chest_open', ms: 320 })
+      ]
+    },
+    { // bruxo: chapeu e varinha. A varinha esta na mao, entao o braco fica
+      // parado e quem estala e a propria varinha (wizard_a / wizard_b)
+      prop: { front: 'wizard_a', side: 'wizard_side' },
+      intro: [
+        at('front', { ms: 150 }),
+        at('front_happy', { prop: 'wizard_a', ms: 160 }),
+        at('front_happy', { prop: 'wizard_b', ms: 160 }),
+        at('front_happy', { y: BASE_Y - 1, prop: 'wizard_a', ground: 'narrow', ms: 150 }),
+        at('front_happy', { prop: 'wizard_b', ms: 150 }),
+        at('front_happy', { y: BASE_Y - 2, prop: 'wizard_a', ground: 'narrow', ms: 150 }),
+        at('front_happy', { prop: 'wizard_b', ms: 150 }),
+        at('front_happy', { y: BASE_Y - 1, prop: 'wizard_a', ground: 'narrow', ms: 150 }),
+        at('front_happy', { prop: 'wizard_b', ms: 150 }),
+        at('front_happy', { prop: 'wizard_a', ms: 160 }),
+        at('front_wink', { prop: 'wizard_b', ms: 340 }),
+        at('front_happy', { prop: 'wizard_a', ms: 200 }),
+        at('front_blink', { prop: 'wizard_b', ms: 120 }),
+        at('front_happy', { prop: 'wizard_a', ms: 320 })
       ]
     }
   ];

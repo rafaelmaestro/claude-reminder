@@ -10,7 +10,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PALETTE = set(".OKWGPBYAR")
+PALETTE = set(".OKWGPBYARN")
 
 
 def blocks(src, section):
@@ -34,7 +34,7 @@ def main():
     errors = []
 
     for section, w, h in (("POSES", int(dims["w"]), int(dims["h"])),
-                          ("PROPS", int(dims["pw"]), int(dims["h"])),
+                          ("PROPS", int(dims["pw"]), int(dims["ph"])),
                           ("SYMBOLS", int(dims["sw"]), int(dims["sh"]))):
         found = blocks(src, section)
         assert found, "nenhuma pose encontrada em %s" % section

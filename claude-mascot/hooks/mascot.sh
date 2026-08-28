@@ -21,7 +21,10 @@ CMD="${1:-}"; shift 2>/dev/null || true
 # comandos — ler sempre custaria um processo python por chamada de ferramenta.
 read_session() {
   python3 -c 'import json,sys
-try: print(json.load(sys.stdin).get("session_id") or "default")
+try:
+    import re
+    sid = str(json.load(sys.stdin).get("session_id") or "default")
+    print(re.sub(r"[^A-Za-z0-9_-]", "", sid) or "default")
 except Exception: print("default")' 2>/dev/null || echo default
 }
 

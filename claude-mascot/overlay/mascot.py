@@ -8,6 +8,7 @@ precisa falar com o X11.
 import argparse
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -123,7 +124,9 @@ def focus_terminal(session):
     Fallback obrigatorio (design D8): se o ID nao vale mais, nao ativa nada. Um
     clique que joga o usuario na janela errada e pior que um clique inerte.
     """
-    path = os.path.join(CACHE, "session-%s.win" % session)
+    # o id vira nome de arquivo: so caracteres de id, nunca separador de caminho
+    safe = re.sub(r"[^A-Za-z0-9_-]", "", session) or "default"
+    path = os.path.join(CACHE, "session-%s.win" % safe)
     try:
         with open(path) as fh:
             wid = fh.read().strip()

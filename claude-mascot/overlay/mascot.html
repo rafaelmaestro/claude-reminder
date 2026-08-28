@@ -203,60 +203,68 @@
   // Variacoes do pedido de atencao. Uma e sorteada por evento — o mesmo aviso
   // repetido vinte vezes por dia vira ruido; variando, continua sendo notado.
   var ASK_VARIANTS = [
-    { // interrogacao: pula, aterrissa e acena com os dois bracos alternados
-      intro: [at('front', { ms: 140 }), at('front', { sym: 'q', symDy: 1, ms: 70 })],
+    { // pulo: sem nenhum icone, so o bicho pulando alto e acenando. A expressao
+      // fica parada e ha uma unica piscada por ciclo — trocar a forma dos olhos
+      // a cada quadro fazia ele parecer que piscava sem parar.
+      intro: [at('front', { ms: 140 }), at('front', { ms: 160 })],
       loop: [
-        at('front_up', { y: BASE_Y - 2, sym: 'q', symDy: -1, ground: 'narrow', ms: 100 }),
-        at('front_up', { y: BASE_Y - 3, sym: 'q', symDy: -2, ground: 'narrow', ms: 100 }),
-        at('front_up', { y: BASE_Y - 1, sym: 'q', symDy: -1, ground: 'narrow', ms: 90 }),
-        at('front_squash', { sym: 'q', symDy: 1, ms: 110 }),
-        at('front_wave_a', { x: REST_X - 1, sym: 'q', symDx: -1, ms: 110 }),
-        at('front_wave_b', { x: REST_X + 1, sym: 'q', symDx: 1, ms: 110 }),
-        at('front_wave_a', { x: REST_X - 1, sym: 'q', symDx: -1, ms: 110 }),
-        at('front_wave_b', { x: REST_X + 1, sym: 'q', symDx: 1, ms: 110 }),
-        at('front_wide', { sym: 'q', ms: 170 }),
-        at('front_blink', { sym: 'q', ms: 90 }),
-        at('front_wide', { sym: 'q', ms: 150 })
+        at('front_up', { y: BASE_Y - 2, ground: 'narrow', ms: 100 }),
+        at('front_up', { y: BASE_Y - 4, ground: 'narrow', ms: 100 }),
+        at('front_up', { y: BASE_Y - 2, ground: 'narrow', ms: 90 }),
+        at('front_squash', { ms: 110 }),
+        at('front', { ms: 300 }),
+        at('front_wave_a', { x: REST_X - 1, ms: 120 }),
+        at('front_wave_b', { x: REST_X + 1, ms: 120 }),
+        at('front_wave_a', { x: REST_X - 1, ms: 120 }),
+        at('front_wave_b', { x: REST_X + 1, ms: 120 }),
+        at('front', { ms: 340 }),
+        at('front_blink', { ms: 100 }),
+        at('front', { ms: 460 })
       ]
     },
-    { // lampada: teve uma ideia e quer contar, acende e apaga
-      intro: [at('front', { ms: 130 }), at('front_wide', { sym: 'bulb_on', ms: 170 })],
+    { // lampada: teve uma ideia e quer contar. Quem acende e apaga e a lampada;
+      // o rosto fica parado, com uma piscada por ciclo.
+      intro: [at('front', { ms: 130 }), at('front_wide', { sym: 'bulb_on', ms: 190 })],
       loop: [
-        at('front_up', { y: BASE_Y - 2, sym: 'bulb_on', symDy: -1, ground: 'narrow', ms: 110 }),
-        at('front', { sym: 'bulb_on', ms: 130 }),
-        at('front_wide', { sym: 'bulb_off', ms: 110 }),
-        at('front_wide', { sym: 'bulb_on', ms: 110 }),
-        at('front_up', { y: BASE_Y - 3, sym: 'bulb_on', symDy: -2, ground: 'narrow', ms: 100 }),
-        at('front_wave_b', { x: REST_X + 1, sym: 'bulb_on', symDx: 1, ms: 120 }),
-        at('front_blink', { sym: 'bulb_off', ms: 90 }),
-        at('front', { sym: 'bulb_on', ms: 190 })
+        at('front_up', { y: BASE_Y - 2, sym: 'bulb_on', symDy: -1, ground: 'narrow', ms: 120 }),
+        at('front', { sym: 'bulb_on', ms: 280 }),
+        at('front', { sym: 'bulb_off', ms: 130 }),
+        at('front', { sym: 'bulb_on', ms: 300 }),
+        at('front_up', { y: BASE_Y - 3, sym: 'bulb_on', symDy: -2, ground: 'narrow', ms: 110 }),
+        at('front', { sym: 'bulb_on', ms: 260 }),
+        at('front_blink', { sym: 'bulb_off', ms: 100 }),
+        at('front', { sym: 'bulb_on', ms: 380 })
       ]
     },
-    { // fone de ouvido: vestido, entao os bracos podem se mexer a vontade
+    { // fone de ouvido: vestido, entao os bracos podem se mexer a vontade. O
+      // sorriso e segurado por um quadro longo em vez de alternar a cada quadro.
       prop: { front: 'headphones', side: 'headphones_side' },
       intro: [at('front', { ms: 160 })],
       loop: [
-        at('front', { x: REST_X - 1, ms: 150 }),
-        at('front_happy', { x: REST_X - 1, ms: 130 }),
-        at('front', { x: REST_X + 1, ms: 150 }),
-        at('front_happy', { x: REST_X + 1, ms: 130 }),
-        at('front_up', { y: BASE_Y - 2, ground: 'narrow', ms: 120 }),
-        at('front_blink', { ms: 90 }),
-        at('front', { ms: 170 })
+        at('front', { x: REST_X - 1, ms: 200 }),
+        at('front', { x: REST_X + 1, ms: 200 }),
+        at('front_happy', { ms: 320 }),
+        at('front', { x: REST_X - 1, ms: 200 }),
+        at('front', { x: REST_X + 1, ms: 200 }),
+        at('front_up', { y: BASE_Y - 2, ground: 'narrow', ms: 130 }),
+        at('front', { ms: 300 }),
+        at('front_blink', { ms: 100 }),
+        at('front', { ms: 360 })
       ]
     },
-    { // capacete e martelo: o martelo esta na mao, entao o braco fica parado e
-      // quem se mexe e o proprio martelo (work_a / work_b)
+    { // capacete e martelo: o martelo fica firme na mao. Anima-lo em dois
+      // quadros trocava a cabeca de cima para baixo do punho, o que nao le como
+      // martelada e sim como a cabeca teleportando.
       prop: { front: 'work_a', side: 'work_side' },
       intro: [at('front', { ms: 160 })],
       loop: [
-        at('front', { prop: 'work_a', ms: 130 }),
-        at('front', { prop: 'work_b', ms: 110 }),
-        at('front', { prop: 'work_a', ms: 120 }),
-        at('front', { y: BASE_Y - 2, prop: 'work_b', ground: 'narrow', ms: 110 }),
-        at('front', { prop: 'work_a', ms: 130 }),
-        at('front_wide', { prop: 'work_b', ms: 160 }),
-        at('front_blink', { prop: 'work_a', ms: 90 })
+        at('front', { ms: 280 }),
+        at('front', { x: REST_X - 1, ms: 170 }),
+        at('front', { x: REST_X + 1, ms: 170 }),
+        at('front', { y: BASE_Y - 2, ground: 'narrow', ms: 120 }),
+        at('front', { ms: 300 }),
+        at('front_blink', { ms: 100 }),
+        at('front', { ms: 380 })
       ]
     },
     { // cafe: o braco que segura a xicara NAO se mexe em nenhum quadro.
@@ -344,24 +352,25 @@
         at('front_happy', { prop: 'chest_open', ms: 320 })
       ]
     },
-    { // bruxo: chapeu e varinha. A varinha esta na mao, entao o braco fica
-      // parado e quem estala e a propria varinha (wizard_a / wizard_b)
-      prop: { front: 'wizard_a', side: 'wizard_side' },
+    { // fogos de artificio: sem objeto na mao, entao e a unica conclusao em que
+      // os bracos sobem e descem a vontade. Os estouros trocam de cor e de
+      // posicao a cada quadro, o que mascara o pulo levar o adereco junto.
+      prop: { front: 'fw_a', side: 'fw_a' },
       intro: [
         at('front', { ms: 150 }),
-        at('front_happy', { prop: 'wizard_a', ms: 160 }),
-        at('front_happy', { prop: 'wizard_b', ms: 160 }),
-        at('front_happy', { y: BASE_Y - 1, prop: 'wizard_a', ground: 'narrow', ms: 150 }),
-        at('front_happy', { prop: 'wizard_b', ms: 150 }),
-        at('front_happy', { y: BASE_Y - 2, prop: 'wizard_a', ground: 'narrow', ms: 150 }),
-        at('front_happy', { prop: 'wizard_b', ms: 150 }),
-        at('front_happy', { y: BASE_Y - 1, prop: 'wizard_a', ground: 'narrow', ms: 150 }),
-        at('front_happy', { prop: 'wizard_b', ms: 150 }),
-        at('front_happy', { prop: 'wizard_a', ms: 160 }),
-        at('front_wink', { prop: 'wizard_b', ms: 340 }),
-        at('front_happy', { prop: 'wizard_a', ms: 200 }),
-        at('front_blink', { prop: 'wizard_b', ms: 120 }),
-        at('front_happy', { prop: 'wizard_a', ms: 320 })
+        at('front_wide', { prop: 'fw_a', ms: 190 }),
+        at('front_up_happy', { y: BASE_Y - 1, prop: 'fw_b', ground: 'narrow', ms: 160 }),
+        at('front_happy', { prop: 'fw_c', ms: 150 }),
+        at('front_up_happy', { y: BASE_Y - 2, prop: 'fw_a', ground: 'narrow', ms: 160 }),
+        at('front_happy', { prop: 'fw_b', ms: 150 }),
+        at('front_up_happy', { y: BASE_Y - 1, prop: 'fw_c', ground: 'narrow', ms: 160 }),
+        at('front_happy', { prop: 'fw_a', ms: 150 }),
+        at('front_up_happy', { y: BASE_Y - 2, prop: 'fw_b', ground: 'narrow', ms: 160 }),
+        at('front_happy', { prop: 'fw_c', ms: 150 }),
+        at('front_wink', { prop: 'fw_a', ms: 340 }),
+        at('front_happy', { prop: 'fw_b', ms: 200 }),
+        at('front_blink', { prop: 'fw_c', ms: 120 }),
+        at('front_happy', { prop: 'fw_a', ms: 300 })
       ]
     }
   ];

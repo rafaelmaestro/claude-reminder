@@ -1,5 +1,5 @@
 {
-  "description": "claude-mascot — overlay animado para pedidos de atencao e conclusao de tarefa",
+  "description": "claude-mascot \u2014 overlay animado para pedidos de atencao e conclusao de tarefa. PermissionRequest e Notification cobrem o pedido de permissao; a deduplicacao de 1,5s em mascot.sh garante um mascote so quando os dois disparam.",
   "hooks": {
     "SessionStart": [
       {
@@ -7,6 +7,18 @@
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/mascot.sh\" session-start",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/mascot.sh\" show ask",
             "timeout": 5
           }
         ]

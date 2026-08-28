@@ -207,8 +207,15 @@ Três detalhes que fazem diferença:
 - **Pixel art não interpola.** Todo movimento é em células inteiras, em passos
   discretos. Rotação suave a 60fps borra o pixel e mata o charme.
 
-O desenho completo, com as alternativas descartadas, está em
-[`openspec/changes/add-mascot-overlay/design.md`](openspec/changes/add-mascot-overlay/design.md).
+Três invariantes que valem para qualquer animação nova:
+
+1. **Adereço existe em todos os quadros da sequência**, entrada e saída andando
+   incluídas. Cada adereço tem versão de frente e de perfil, e o motor escolhe
+   pela pose — declarar quadro a quadro à mão é o que fazia o objeto piscar.
+2. **Variação que segura objeto na mão não usa pose que mexe braço.** O braço
+   sobe e o objeto fica flutuando. Quem anima é o próprio objeto.
+3. **Nenhuma variação com adereço usa `front_squash`**, que desloca o corpo na
+   grade e descola o adereço, desenhado em linhas fixas.
 
 ---
 

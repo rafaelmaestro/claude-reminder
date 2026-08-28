@@ -34,7 +34,7 @@ def main():
     errors = []
 
     for section, w, h in (("POSES", int(dims["w"]), int(dims["h"])),
-                          ("PROPS", int(dims["w"]), int(dims["h"])),
+                          ("PROPS", int(dims["pw"]), int(dims["h"])),
                           ("SYMBOLS", int(dims["sw"]), int(dims["sh"]))):
         found = blocks(src, section)
         assert found, "nenhuma pose encontrada em %s" % section

@@ -33,7 +33,7 @@ CONFIG = os.path.join(
 
 # Tamanho da faixa em celulas. A faixa e maior que o mascote porque ele entra e
 # sai andando dentro dela — mover a janela GTK a cada frame engasga no X11.
-COLS, ROWS = 40, 24
+COLS, ROWS = 43, 24
 MARGIN = 24  # folga ate a borda do monitor
 HIT_PAD = 8  # alvo pequeno em movimento precisa de folga de clique
 

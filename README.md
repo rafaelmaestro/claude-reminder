@@ -91,8 +91,10 @@ imediatamente com código 0 e deixam a animação rodando em outro processo.
 
 ## As animações
 
-O pedido de atenção **sorteia uma das sete** a cada vez. O mesmo aviso repetido
-vinte vezes por dia deixa de ser notado — variando, continua funcionando.
+O pedido de atenção **sorteia uma das seis** a cada vez. O mesmo aviso repetido
+vinte vezes por dia deixa de ser notado — variando, continua funcionando. Só a
+primeira usa a interrogação; nas outras o próprio adereço já diz que ele quer
+alguma coisa.
 
 | pedindo permissão | o que faz |
 |---|---|
@@ -101,14 +103,13 @@ vinte vezes por dia deixa de ser notado — variando, continua funcionando.
 | **fone** | esperando você, balançando de um lado pro outro |
 | **capacete** | parado no meio do serviço, martelando |
 | **café** | esperando sua resposta sem pressa |
-| **impaciente** | sobrancelha grossa, batendo o pé |
-| **passarinho** | veio acompanhado te avisar |
+| **óculos** | de óculos escuros, balançando de um lado pro outro |
 
 | tarefa concluída | o que faz |
 |---|---|
 | **check** | o ✓ verde se desenha, aceno e piscadinha |
 | **coração** | de nada |
-| **faíscas** | comemoração com varinha |
+| **faíscas** | balança a varinha que estala na ponta |
 
 A conclusão roda **uma vez** e vai embora sozinha. O pedido fica em loop até
 você responder (ou até o tempo limite).
@@ -176,7 +177,7 @@ Pra ver sem esperar o Claude Code:
 
 ```bash
 python3 claude-mascot/overlay/mascot.py --state ask               # sorteia
-python3 claude-mascot/overlay/mascot.py --state ask --variant 3   # força uma
+python3 claude-mascot/overlay/mascot.py --state ask --variant 3   # força uma (0..5)
 python3 claude-mascot/overlay/mascot.py --state done --variant 1
 ```
 

@@ -38,9 +38,10 @@
     'A': '#9a9a9a',  // metal
     'R': '#e03131'   // coracao
   };
-  var W = GRID.w, H = GRID.h, SW = GRID.sw, SH = GRID.sh;
+  var W = GRID.w, H = GRID.h, PW = GRID.pw, SW = GRID.sw, SH = GRID.sh;
 
-  var REST_X = COLS - W - 2;   // posicao de descanso, perto da borda direita
+  // Sobra a direita suficiente para a camada de adereco (mais larga que o corpo)
+  var REST_X = COLS - PW - 1;
   var BASE_Y = 10;             // linha em que ele fica de pe
   var GROUND_Y = BASE_Y + H;   // a sombra do chao nao sobe junto no pulo
 
@@ -86,7 +87,7 @@
   var propEl = document.getElementById('prop');
   var bodyCells = build(bodyEl, W, H);
   var symCells = build(symEl, SW, SH);
-  var propCells = build(propEl, W, H);
+  var propCells = build(propEl, PW, H);
 
   ground.style.height = CELL + 'px';
   ground.style.top = (GROUND_Y * CELL) + 'px';
@@ -101,11 +102,11 @@
 
     // Adereco anda colado no corpo: mesma posicao, mesmo espelhamento.
     if (f.prop) {
-      paint(propCells, W, H, PROPS[f.prop]);
+      paint(propCells, PW, H, PROPS[f.prop]);
       propEl.style.display = 'block';
       propEl.style.left = bodyEl.style.left;
       propEl.style.top = bodyEl.style.top;
-      propEl.style.transform = bodyEl.style.transform;
+      propEl.style.transform = 'none';  // espelhar jogaria a varinha dentro do corpo
     } else {
       propEl.style.display = 'none';
     }
@@ -191,8 +192,8 @@
     });
   }
 
-  function exitFrames(hasProp) {
-    return hasProp
+  function exitFrames(v) {
+    return v.prop
       ? [at('front_wide', { ms: 120 }), at('front', { ms: 90 })]
       : [at('front_squash', { ms: 130 }), at('front', { ms: 90 })];
   }
@@ -203,9 +204,9 @@
     { // interrogacao: pula, aterrissa e acena com os dois bracos alternados
       intro: [at('front', { ms: 140 }), at('front', { sym: 'q', symDy: 1, ms: 70 })],
       loop: [
+        at('front_up', { y: BASE_Y - 2, sym: 'q', symDy: -1, ground: 'narrow', ms: 100 }),
         at('front_up', { y: BASE_Y - 3, sym: 'q', symDy: -2, ground: 'narrow', ms: 100 }),
-        at('front_up', { y: BASE_Y - 4, sym: 'q', symDy: -3, ground: 'narrow', ms: 100 }),
-        at('front_up', { y: BASE_Y - 2, sym: 'q', symDy: -1, ground: 'narrow', ms: 90 }),
+        at('front_up', { y: BASE_Y - 1, sym: 'q', symDy: -1, ground: 'narrow', ms: 90 }),
         at('front_squash', { sym: 'q', symDy: 1, ms: 110 }),
         at('front_wave_a', { x: REST_X - 1, sym: 'q', symDx: -1, ms: 110 }),
         at('front_wave_b', { x: REST_X + 1, sym: 'q', symDx: 1, ms: 110 }),
@@ -233,13 +234,13 @@
       prop: { front: 'headphones', side: 'headphones_side' },
       intro: [at('front', { ms: 160 })],
       loop: [
-        at('front', { x: REST_X - 1, sym: 'q', symDx: -1, ms: 150 }),
+        at('front', { x: REST_X - 1, ms: 150 }),
         at('front_happy', { x: REST_X - 1, ms: 130 }),
-        at('front', { x: REST_X + 1, sym: 'q', symDx: 1, ms: 150 }),
+        at('front', { x: REST_X + 1, ms: 150 }),
         at('front_happy', { x: REST_X + 1, ms: 130 }),
-        at('front_up', { y: BASE_Y - 2, sym: 'q', symDy: -1, ground: 'narrow', ms: 120 }),
+        at('front_up', { y: BASE_Y - 2, ground: 'narrow', ms: 120 }),
         at('front_blink', { ms: 90 }),
-        at('front', { sym: 'q', ms: 170 })
+        at('front', { ms: 170 })
       ]
     },
     { // capacete e martelo: o martelo esta na mao, entao o braco fica parado e
@@ -247,12 +248,12 @@
       prop: { front: 'work_a', side: 'work_side' },
       intro: [at('front', { ms: 160 })],
       loop: [
-        at('front', { prop: 'work_a', sym: 'q', ms: 130 }),
-        at('front', { prop: 'work_b', sym: 'q', symDy: 1, ms: 110 }),
-        at('front', { prop: 'work_a', sym: 'q', ms: 120 }),
-        at('front', { y: BASE_Y - 2, prop: 'work_b', sym: 'q', symDy: -1, ground: 'narrow', ms: 110 }),
-        at('front', { prop: 'work_a', sym: 'q', ms: 130 }),
-        at('front_wide', { prop: 'work_b', sym: 'q', ms: 160 }),
+        at('front', { prop: 'work_a', ms: 130 }),
+        at('front', { prop: 'work_b', ms: 110 }),
+        at('front', { prop: 'work_a', ms: 120 }),
+        at('front', { y: BASE_Y - 2, prop: 'work_b', ground: 'narrow', ms: 110 }),
+        at('front', { prop: 'work_a', ms: 130 }),
+        at('front_wide', { prop: 'work_b', ms: 160 }),
         at('front_blink', { prop: 'work_a', ms: 90 })
       ]
     },
@@ -261,36 +262,26 @@
       prop: { front: 'mug_a', side: 'mug_side' },
       intro: [at('front', { ms: 160 })],
       loop: [
-        at('front', { prop: 'mug_a', sym: 'q', ms: 150 }),
+        at('front', { prop: 'mug_a', ms: 150 }),
         at('front_blink', { prop: 'mug_b', ms: 110 }),
         at('front_happy', { prop: 'mug_a', ms: 140 }),
-        at('front', { x: REST_X - 1, prop: 'mug_b', sym: 'q', symDx: -1, ms: 140 }),
-        at('front', { y: BASE_Y - 2, prop: 'mug_a', sym: 'q', symDy: -1, ground: 'narrow', ms: 120 }),
-        at('front', { prop: 'mug_b', sym: 'q', ms: 190 })
+        at('front', { x: REST_X - 1, prop: 'mug_b', ms: 140 }),
+        at('front', { y: BASE_Y - 2, prop: 'mug_a', ground: 'narrow', ms: 120 }),
+        at('front', { prop: 'mug_b', ms: 190 })
       ]
     },
-    { // impaciente: sobrancelha grossa, batendo o pe de um lado pro outro
-      intro: [at('front_brow', { ms: 160 })],
-      loop: [
-        at('front_brow', { sym: 'q', ms: 160 }),
-        at('front_brow', { x: REST_X - 1, sym: 'q', symDx: -1, ms: 120 }),
-        at('front_brow', { x: REST_X + 1, sym: 'q', symDx: 1, ms: 120 }),
-        at('front_squash', { sym: 'q', symDy: 1, ms: 110 }),
-        at('front_brow', { sym: 'q', ms: 140 }),
-        at('front_wide', { sym: 'q', ms: 150 }),
-        at('front_blink', { ms: 90 })
-      ]
-    },
-    { // passarinho no lombo: pousado, entao os bracos podem se mexer
-      prop: { front: 'bird_a', side: 'bird_side' },
+    { // oculos escuros: sao adereco, entao acompanham toda pose e toda
+      // caminhada. Como pose do corpo sumiam na piscada e o rosto piscava.
+      prop: { front: 'shades', side: 'shades_side' },
       intro: [at('front', { ms: 160 })],
       loop: [
-        at('front', { prop: 'bird_a', sym: 'q', ms: 150 }),
-        at('front_happy', { prop: 'bird_b', ms: 130 }),
-        at('front', { prop: 'bird_a', sym: 'q', ms: 150 }),
-        at('front_up', { y: BASE_Y - 2, prop: 'bird_b', sym: 'q', symDy: -1, ground: 'narrow', ms: 110 }),
-        at('front_blink', { prop: 'bird_a', ms: 90 }),
-        at('front_wide', { prop: 'bird_b', sym: 'q', ms: 170 })
+        at('front', { ms: 170 }),
+        at('front', { x: REST_X - 1, ms: 120 }),
+        at('front', { x: REST_X + 1, ms: 120 }),
+        at('front', { x: REST_X - 1, ms: 120 }),
+        at('front_wide', { ms: 160 }),
+        at('front_blink', { ms: 100 }),
+        at('front', { ms: 200 })
       ]
     }
   ];
@@ -346,7 +337,7 @@
     return {
       intro: applyProp(walkIn().concat([at('side_a', { ms: 80 })]).concat(v.intro), v.prop),
       loop: applyProp(v.loop, v.prop),
-      exit: applyProp(exitFrames(!!v.prop).concat(walkOut()), v.prop)
+      exit: applyProp(exitFrames(v).concat(walkOut()), v.prop)
     };
   }
 

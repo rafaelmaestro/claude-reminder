@@ -31,13 +31,6 @@ Um bichinho de 70 pixels entra andando no canto inferior direito do monitor
 que está em foco, toca um som e fica pulando até você responder. Clicou nele,
 o terminal volta pra frente e ele sai andando.
 
-```
-        ?                              v
-     \ (o o) /                      (^ - ^)
-       |   |     pedindo              |   |     terminou
-       n   n     permissão            n   n     tchauzinho
-```
-
 ---
 
 ## Instalação
@@ -61,7 +54,7 @@ sudo apt install python3-gi gir1.2-webkit2-4.1 xdotool pipewire-bin \
 ```
 
 | precisa de | por quê |
-|---|---|
+| --- | --- |
 | **X11** | posicionar janela, always-on-top e recorte de clique |
 | `python3-gi` (GTK 3.0 + WebKit2 4.1) | desenhar e animar o mascote |
 | `xdotool` | achar o monitor em foco e devolver o foco ao terminal |
@@ -77,7 +70,7 @@ sudo apt install python3-gi gir1.2-webkit2-4.1 xdotool pipewire-bin \
 ## O que dispara o quê
 
 | hook do Claude Code | o que acontece |
-|---|---|
+| --- | --- |
 | `Notification` | pedido de permissão → mascote entra e insiste |
 | `PreToolUse` · `AskUserQuestion` | Claude fez uma pergunta → mesma coisa |
 | `PostToolUse` | você aprovou e a ferramenta rodou → mascote sai |
@@ -89,40 +82,13 @@ imediatamente com código 0 e deixam a animação rodando em outro processo.
 
 ---
 
-## As animações
-
-O pedido de atenção **sorteia uma das seis** a cada vez. O mesmo aviso repetido
-vinte vezes por dia deixa de ser notado — variando, continua funcionando. Só a
-primeira usa a interrogação; nas outras o próprio adereço já diz que ele quer
-alguma coisa.
-
-| pedindo permissão | o que faz |
-|---|---|
-| **?** | pula alto, aterrissa e acena com os dois braços alternados |
-| **lâmpada** | teve uma ideia e quer contar; a lâmpada acende e apaga |
-| **fone** | esperando você, balançando de um lado pro outro |
-| **capacete** | parado no meio do serviço, martelando |
-| **café** | esperando sua resposta sem pressa |
-| **óculos** | de óculos escuros, balançando de um lado pro outro |
-
-| tarefa concluída | o que faz |
-|---|---|
-| **check** | o ✓ verde se desenha, aceno e piscadinha |
-| **coração** | de nada |
-| **faíscas** | balança a varinha que estala na ponta |
-
-A conclusão roda **uma vez** e vai embora sozinha. O pedido fica em loop até
-você responder (ou até o tempo limite).
-
----
-
 ## Configuração
 
 Opcional. Copie `claude-mascot/config.example.json` para
 `~/.config/claude-mascot/config.json`:
 
 | chave | padrão | o que faz |
-|---|---|---|
+| --- | --- | --- |
 | `enabled` | `true` | desliga tudo sem desinstalar |
 | `states.ask` | `true` | mascote no pedido de permissão |
 | `states.done` | `true` | mascote no fim da tarefa |
@@ -136,86 +102,6 @@ Arquivo ausente ou com JSON inválido: usa os padrões e segue funcionando.
 
 **Achou pequeno?** `"cell": 10`. **Achou intrusivo?** `"cell": 5` e
 `"mute": true`.
-
----
-
-## Editando as animações
-
-As poses são blocos de texto, um caractere por pixel. Mexer é trocar letra:
-
-```
-.  vazio    O  laranja   K  preto    W  branco
-G  verde    P  roxo      B  azul     Y  amarelo
-A  cinza    R  vermelho
-```
-
-```js
-front_happy: `
-...............
-...............
-..OOOOOOOOOOO..
-..OOOOOOOOOOO..
-..OOOOOOOOOOO..
-..OOKOOOOOKOO..
-.OOKKKOOOKKKOO.
-.OOOOOOOOOOOOO.
-..OOOOOOOOOOO..
-..OOOOOOOOOOO..
-..O.O.....O.O..
-..O.O.....O.O..
-`,
-```
-
-Depois de mexer, rode o check — uma linha com uma coluna a mais não quebra
-nada visivelmente, só desloca meio corpo do mascote:
-
-```bash
-python3 claude-mascot/overlay/check.py
-```
-
-Pra ver sem esperar o Claude Code:
-
-```bash
-python3 claude-mascot/overlay/mascot.py --state ask               # sorteia
-python3 claude-mascot/overlay/mascot.py --state ask --variant 3   # força uma (0..5)
-python3 claude-mascot/overlay/mascot.py --state done --variant 1
-```
-
-Adereços (`PROPS` em `poses.js`) são uma camada por cima do corpo — uma
-variação nova não exige redesenhar as poses.
-
----
-
-## Como funciona
-
-```
-hook ──▶ mascot.sh ──▶ (setsid) mascot.py ──▶ WebKit ──▶ mascot.html
-  │       sai com 0      janela GTK              pixel art em
-  │       na hora        transparente            frames discretos
-  │
-  └── nunca bloqueia a sessão do Claude Code
-```
-
-Um processo por evento — sem daemon, sem IPC, sem processo órfão.
-
-Três detalhes que fazem diferença:
-
-- **A janela nunca pega foco.** Se pegasse, comeria as teclas que você está
-  digitando como resposta pro Claude.
-- **Só o boneco é clicável.** O resto da janela é atravessado pelo clique
-  (extensão X11 SHAPE), e o recorte acompanha o sprite a cada frame.
-- **Pixel art não interpola.** Todo movimento é em células inteiras, em passos
-  discretos. Rotação suave a 60fps borra o pixel e mata o charme.
-
-Três invariantes que valem para qualquer animação nova:
-
-1. **Adereço existe em todos os quadros da sequência**, entrada e saída andando
-   incluídas. Cada adereço tem versão de frente e de perfil, e o motor escolhe
-   pela pose — declarar quadro a quadro à mão é o que fazia o objeto piscar.
-2. **Variação que segura objeto na mão não usa pose que mexe braço.** O braço
-   sobe e o objeto fica flutuando. Quem anima é o próprio objeto.
-3. **Nenhuma variação com adereço usa `front_squash`**, que desloca o corpo na
-   grade e descola o adereço, desenhado em linhas fixas.
 
 ---
 

@@ -1,0 +1,400 @@
+<meta charset="utf-8">
+<title>claude-mascot</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+  #stage { position: relative; width: 100%; height: 100%; }
+  .grid { position: absolute; left: 0; top: 0; }
+  .grid > i { position: absolute; display: block; }
+  #ground { position: absolute; background: rgba(0,0,0,.22); }
+  /* Nada aqui pode ter transition: pixel art nao interpola (design D4). */
+  * { transition: none !important; animation: none !important; }
+</style>
+<div id="stage">
+  <div id="ground"></div>
+  <div id="sym" class="grid"></div>
+  <div id="body" class="grid"></div>
+  <div id="prop" class="grid"></div>
+</div>
+<script src="poses.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var CELL = +(q.get('cell') || 7);
+  var COLS = +(q.get('cols') || 40);
+  var ROWS = +(q.get('rows') || 24);
+  var STATE = q.get('state') || 'ask';
+  // Fundo opaco opcional: usado so para gravar o GIF do README.
+  if (q.get('bg')) { document.body.style.background = q.get('bg'); }
+
+  var PAL = {
+    '.': null,
+    'O': '#d97757',  // corpo
+    'K': '#191919',  // olhos
+    'W': '#ffffff',
+    'G': '#2ba84a',  // check
+    'P': '#6b4fd8',  // interrogacao
+    'B': '#1f4e8c',  // fone
+    'Y': '#f0b23c',  // capacete, lampada
+    'A': '#9a9a9a',  // metal
+    'R': '#e03131'   // coracao
+  };
+  var W = GRID.w, H = GRID.h, SW = GRID.sw, SH = GRID.sh;
+
+  var REST_X = COLS - W - 2;   // posicao de descanso, perto da borda direita
+  var BASE_Y = 10;             // linha em que ele fica de pe
+  var GROUND_Y = BASE_Y + H;   // a sombra do chao nao sobe junto no pulo
+
+  var ground = document.getElementById('ground');
+  var shadow = Math.max(2, Math.round(CELL * 0.45)) + 'px';
+
+  function send(o) {
+    try { window.webkit.messageHandlers.mascot.postMessage(JSON.stringify(o)); } catch (e) {}
+  }
+
+  function build(el, w, h) {
+    el.style.width = (w * CELL) + 'px';
+    el.style.height = (h * CELL) + 'px';
+    // Sombra dura, sem desfoque: separa do fundo sem sair do idioma pixel art.
+    el.style.filter = 'drop-shadow(' + shadow + ' ' + shadow + ' 0 rgba(0,0,0,.35))';
+    var cells = [];
+    for (var i = 0; i < w * h; i++) {
+      var c = document.createElement('i');
+      c.style.width = CELL + 'px';
+      c.style.height = CELL + 'px';
+      c.style.left = ((i % w) * CELL) + 'px';
+      c.style.top = (Math.floor(i / w) * CELL) + 'px';
+      el.appendChild(c);
+      cells.push(c);
+    }
+    return cells;
+  }
+
+  function lines(block) { return block.replace(/^\n|\n$/g, '').split('\n'); }
+
+  function paint(cells, w, h, block) {
+    var rows = block ? lines(block) : [];
+    for (var y = 0; y < h; y++) {
+      var row = rows[y] || '';
+      for (var x = 0; x < w; x++) {
+        cells[y * w + x].style.background = PAL[row.charAt(x)] || 'transparent';
+      }
+    }
+  }
+
+  var bodyEl = document.getElementById('body');
+  var symEl = document.getElementById('sym');
+  var propEl = document.getElementById('prop');
+  var bodyCells = build(bodyEl, W, H);
+  var symCells = build(symEl, SW, SH);
+  var propCells = build(propEl, W, H);
+
+  ground.style.height = CELL + 'px';
+  ground.style.top = (GROUND_Y * CELL) + 'px';
+
+  var lastHit = '';
+
+  function render(f) {
+    paint(bodyCells, W, H, POSES[f.p]);
+    bodyEl.style.left = (f.x * CELL) + 'px';
+    bodyEl.style.top = (f.y * CELL) + 'px';
+    bodyEl.style.transform = f.flip ? 'scaleX(-1)' : 'none';
+
+    // Adereco anda colado no corpo: mesma posicao, mesmo espelhamento.
+    if (f.prop) {
+      paint(propCells, W, H, PROPS[f.prop]);
+      propEl.style.display = 'block';
+      propEl.style.left = bodyEl.style.left;
+      propEl.style.top = bodyEl.style.top;
+      propEl.style.transform = bodyEl.style.transform;
+    } else {
+      propEl.style.display = 'none';
+    }
+
+    if (f.sym) {
+      paint(symCells, SW, SH, SYMBOLS[f.sym]);
+      symEl.style.display = 'block';
+      symEl.style.left = ((f.x + 4 + (f.symDx || 0)) * CELL) + 'px';
+      symEl.style.top = ((f.y - 5 + (f.symDy || 0)) * CELL) + 'px';
+    } else {
+      symEl.style.display = 'none';
+    }
+
+    if (f.ground) {
+      var wide = f.ground === 'wide';
+      ground.style.display = 'block';
+      ground.style.width = ((wide ? 11 : 7) * CELL) + 'px';
+      ground.style.left = ((f.x + (wide ? 2 : 4)) * CELL) + 'px';
+    } else {
+      ground.style.display = 'none';
+    }
+
+    // O recorte de clique acompanha o sprite: alvo pequeno que anda e dificil
+    // de acertar, e um recorte parado deixa o clique caindo no vazio.
+    var hit = { t: 'hit', x: f.x * CELL, y: f.y * CELL, w: W * CELL, h: H * CELL };
+    var key = hit.x + ':' + hit.y;
+    if (key !== lastHit) { lastHit = key; send(hit); }
+  }
+
+  // --- coreografia -------------------------------------------------------
+
+  function walkIn() {
+    var f = [], i = 0;
+    for (var x = COLS; x > REST_X; x -= 2) {
+      f.push({ p: (i++ % 2) ? 'side_b' : 'side_a', x: x, y: BASE_Y, ground: 'wide', ms: 85 });
+    }
+    return f;
+  }
+
+  function walkOut() {
+    var f = [], i = 0;
+    for (var x = REST_X; x <= COLS; x += 2) {
+      f.push({ p: (i++ % 2) ? 'side_b' : 'side_a', x: x, y: BASE_Y, ground: 'wide', ms: 85, flip: true });
+    }
+    return f;
+  }
+
+  function at(p, extra) {
+    var f = { p: p, x: REST_X, y: BASE_Y, ground: 'wide', ms: 120 };
+    for (var k in extra) f[k] = extra[k];
+    return f;
+  }
+
+  function wave(times, sym) {
+    var f = [];
+    for (var i = 0; i < times; i++) {
+      f.push(at('front_up_happy', { y: BASE_Y - 1, sym: sym, symDy: -1, ground: 'narrow', ms: 120 }));
+      f.push(at('front_happy', { sym: sym, ms: 120 }));
+    }
+    return f;
+  }
+
+  // Poses de perfil: usadas na entrada e na saida andando.
+  var SIDE = { side_a: 1, side_b: 1 };
+
+  // Poses que mexem os bracos. Variacao que segura objeto na mao nao pode usar
+  // nenhuma delas — o braco sobe e o objeto fica flutuando onde estava.
+  // front_squash tambem esta fora de qualquer variacao com adereco: ela desloca
+  // o corpo dentro da grade, e o adereco, que e desenhado em linhas fixas,
+  // descola do corpo.
+
+  // Espalha o adereco por TODOS os quadros da sequencia, escolhendo a versao de
+  // frente ou de perfil conforme a pose. E o que impede o objeto de piscar
+  // entre a caminhada e a pose de frente.
+  function applyProp(frames, prop) {
+    if (!prop) return frames;
+    return frames.map(function (f) {
+      if (f.prop) return f;
+      var c = {};
+      for (var k in f) c[k] = f[k];
+      c.prop = SIDE[f.p] ? prop.side : prop.front;
+      return c;
+    });
+  }
+
+  function exitFrames(hasProp) {
+    return hasProp
+      ? [at('front_wide', { ms: 120 }), at('front', { ms: 90 })]
+      : [at('front_squash', { ms: 130 }), at('front', { ms: 90 })];
+  }
+
+  // Variacoes do pedido de atencao. Uma e sorteada por evento — o mesmo aviso
+  // repetido vinte vezes por dia vira ruido; variando, continua sendo notado.
+  var ASK_VARIANTS = [
+    { // interrogacao: pula, aterrissa e acena com os dois bracos alternados
+      intro: [at('front', { ms: 140 }), at('front', { sym: 'q', symDy: 1, ms: 70 })],
+      loop: [
+        at('front_up', { y: BASE_Y - 3, sym: 'q', symDy: -2, ground: 'narrow', ms: 100 }),
+        at('front_up', { y: BASE_Y - 4, sym: 'q', symDy: -3, ground: 'narrow', ms: 100 }),
+        at('front_up', { y: BASE_Y - 2, sym: 'q', symDy: -1, ground: 'narrow', ms: 90 }),
+        at('front_squash', { sym: 'q', symDy: 1, ms: 110 }),
+        at('front_wave_a', { x: REST_X - 1, sym: 'q', symDx: -1, ms: 110 }),
+        at('front_wave_b', { x: REST_X + 1, sym: 'q', symDx: 1, ms: 110 }),
+        at('front_wave_a', { x: REST_X - 1, sym: 'q', symDx: -1, ms: 110 }),
+        at('front_wave_b', { x: REST_X + 1, sym: 'q', symDx: 1, ms: 110 }),
+        at('front_wide', { sym: 'q', ms: 170 }),
+        at('front_blink', { sym: 'q', ms: 90 }),
+        at('front_wide', { sym: 'q', ms: 150 })
+      ]
+    },
+    { // lampada: teve uma ideia e quer contar, acende e apaga
+      intro: [at('front', { ms: 130 }), at('front_wide', { sym: 'bulb_on', ms: 170 })],
+      loop: [
+        at('front_up', { y: BASE_Y - 2, sym: 'bulb_on', symDy: -1, ground: 'narrow', ms: 110 }),
+        at('front', { sym: 'bulb_on', ms: 130 }),
+        at('front_wide', { sym: 'bulb_off', ms: 110 }),
+        at('front_wide', { sym: 'bulb_on', ms: 110 }),
+        at('front_up', { y: BASE_Y - 3, sym: 'bulb_on', symDy: -2, ground: 'narrow', ms: 100 }),
+        at('front_wave_b', { x: REST_X + 1, sym: 'bulb_on', symDx: 1, ms: 120 }),
+        at('front_blink', { sym: 'bulb_off', ms: 90 }),
+        at('front', { sym: 'bulb_on', ms: 190 })
+      ]
+    },
+    { // fone de ouvido: vestido, entao os bracos podem se mexer a vontade
+      prop: { front: 'headphones', side: 'headphones_side' },
+      intro: [at('front', { ms: 160 })],
+      loop: [
+        at('front', { x: REST_X - 1, sym: 'q', symDx: -1, ms: 150 }),
+        at('front_happy', { x: REST_X - 1, ms: 130 }),
+        at('front', { x: REST_X + 1, sym: 'q', symDx: 1, ms: 150 }),
+        at('front_happy', { x: REST_X + 1, ms: 130 }),
+        at('front_up', { y: BASE_Y - 2, sym: 'q', symDy: -1, ground: 'narrow', ms: 120 }),
+        at('front_blink', { ms: 90 }),
+        at('front', { sym: 'q', ms: 170 })
+      ]
+    },
+    { // capacete e martelo: o martelo esta na mao, entao o braco fica parado e
+      // quem se mexe e o proprio martelo (work_a / work_b)
+      prop: { front: 'work_a', side: 'work_side' },
+      intro: [at('front', { ms: 160 })],
+      loop: [
+        at('front', { prop: 'work_a', sym: 'q', ms: 130 }),
+        at('front', { prop: 'work_b', sym: 'q', symDy: 1, ms: 110 }),
+        at('front', { prop: 'work_a', sym: 'q', ms: 120 }),
+        at('front', { y: BASE_Y - 2, prop: 'work_b', sym: 'q', symDy: -1, ground: 'narrow', ms: 110 }),
+        at('front', { prop: 'work_a', sym: 'q', ms: 130 }),
+        at('front_wide', { prop: 'work_b', sym: 'q', ms: 160 }),
+        at('front_blink', { prop: 'work_a', ms: 90 })
+      ]
+    },
+    { // cafe: o braco que segura a xicara NAO se mexe em nenhum quadro.
+      // O que anima e o vapor (mug_a / mug_b), o rosto e o pulo do corpo inteiro.
+      prop: { front: 'mug_a', side: 'mug_side' },
+      intro: [at('front', { ms: 160 })],
+      loop: [
+        at('front', { prop: 'mug_a', sym: 'q', ms: 150 }),
+        at('front_blink', { prop: 'mug_b', ms: 110 }),
+        at('front_happy', { prop: 'mug_a', ms: 140 }),
+        at('front', { x: REST_X - 1, prop: 'mug_b', sym: 'q', symDx: -1, ms: 140 }),
+        at('front', { y: BASE_Y - 2, prop: 'mug_a', sym: 'q', symDy: -1, ground: 'narrow', ms: 120 }),
+        at('front', { prop: 'mug_b', sym: 'q', ms: 190 })
+      ]
+    },
+    { // impaciente: sobrancelha grossa, batendo o pe de um lado pro outro
+      intro: [at('front_brow', { ms: 160 })],
+      loop: [
+        at('front_brow', { sym: 'q', ms: 160 }),
+        at('front_brow', { x: REST_X - 1, sym: 'q', symDx: -1, ms: 120 }),
+        at('front_brow', { x: REST_X + 1, sym: 'q', symDx: 1, ms: 120 }),
+        at('front_squash', { sym: 'q', symDy: 1, ms: 110 }),
+        at('front_brow', { sym: 'q', ms: 140 }),
+        at('front_wide', { sym: 'q', ms: 150 }),
+        at('front_blink', { ms: 90 })
+      ]
+    },
+    { // passarinho no lombo: pousado, entao os bracos podem se mexer
+      prop: { front: 'bird_a', side: 'bird_side' },
+      intro: [at('front', { ms: 160 })],
+      loop: [
+        at('front', { prop: 'bird_a', sym: 'q', ms: 150 }),
+        at('front_happy', { prop: 'bird_b', ms: 130 }),
+        at('front', { prop: 'bird_a', sym: 'q', ms: 150 }),
+        at('front_up', { y: BASE_Y - 2, prop: 'bird_b', sym: 'q', symDy: -1, ground: 'narrow', ms: 110 }),
+        at('front_blink', { prop: 'bird_a', ms: 90 }),
+        at('front_wide', { prop: 'bird_b', sym: 'q', ms: 170 })
+      ]
+    }
+  ];
+
+  // A conclusao tambem varia — so que sem loop: roda uma vez e vai embora.
+  var DONE_VARIANTS = [
+    { // check verde se desenhando
+      intro: [
+        at('front', { ms: 120 }),
+        at('front_happy', { sym: 'c1', ms: 80 }),
+        at('front_happy', { sym: 'c2', ms: 80 }),
+        at('front_happy', { sym: 'c3', ms: 130 })
+      ].concat(wave(3, 'c3')).concat([
+        at('front_wink', { sym: 'c3', ms: 240 }),
+        at('front_happy', { sym: 'c3', ms: 150 })
+      ])
+    },
+    { // coracao: de nada
+      intro: [
+        at('front', { ms: 120 }),
+        at('front_wide', { sym: 'heart', ms: 130 }),
+        at('front_happy', { sym: 'heart', ms: 150 })
+      ].concat(wave(3, 'heart')).concat([
+        at('front_wink', { sym: 'heart', ms: 240 }),
+        at('front_happy', { sym: 'heart', ms: 150 })
+      ])
+    },
+    { // faiscas: a varinha esta na mao, entao o braco fica parado e quem
+      // estala e a propria varinha (wand_a / wand_b)
+      prop: { front: 'wand_a', side: 'wand_a' },
+      intro: [
+        at('front', { ms: 120 }),
+        at('front_happy', { prop: 'wand_a', ms: 130 }),
+        at('front_happy', { prop: 'wand_b', ms: 130 }),
+        at('front_happy', { y: BASE_Y - 1, prop: 'wand_a', ground: 'narrow', ms: 120 }),
+        at('front_happy', { prop: 'wand_b', ms: 120 }),
+        at('front_happy', { y: BASE_Y - 2, prop: 'wand_a', ground: 'narrow', ms: 120 }),
+        at('front_happy', { prop: 'wand_b', ms: 120 }),
+        at('front_wink', { prop: 'wand_a', ms: 240 }),
+        at('front_happy', { prop: 'wand_b', ms: 150 })
+      ]
+    }
+  ];
+
+  function pick(list) {
+    var forced = q.get('variant');
+    return list[forced === null ? Math.floor(Math.random() * list.length)
+                                : (+forced % list.length)];
+  }
+
+  function askSeq() {
+    var v = pick(ASK_VARIANTS);
+    return {
+      intro: applyProp(walkIn().concat([at('side_a', { ms: 80 })]).concat(v.intro), v.prop),
+      loop: applyProp(v.loop, v.prop),
+      exit: applyProp(exitFrames(!!v.prop).concat(walkOut()), v.prop)
+    };
+  }
+
+  function doneSeq() {
+    var v = pick(DONE_VARIANTS);
+    return {
+      intro: applyProp(walkIn().concat([at('side_a', { ms: 80 })]).concat(v.intro), v.prop),
+      loop: [],                   // conclusao nao insiste: roda uma vez e sai
+      exit: applyProp(walkOut(), v.prop)
+    };
+  }
+
+  // --- motor -------------------------------------------------------------
+
+  var seq = STATE === 'done' ? doneSeq() : askSeq();
+  var phase = 'intro', i = 0, timer = null, leaving = false;
+
+  function tick() {
+    var f;
+    if (phase === 'intro') {
+      if (i < seq.intro.length) { f = seq.intro[i++]; }
+      else { phase = 'loop'; i = 0; return tick(); }
+    } else if (phase === 'loop') {
+      if (!seq.loop.length) { phase = 'exit'; i = 0; return tick(); }
+      f = seq.loop[i++ % seq.loop.length];
+    } else {
+      if (i < seq.exit.length) { f = seq.exit[i++]; }
+      else { send({ t: 'done' }); return; }
+    }
+    render(f);
+    timer = setTimeout(tick, f.ms || 100);
+  }
+
+  window.mascotExit = function () {
+    if (phase === 'exit') return;
+    clearTimeout(timer);
+    phase = 'exit'; i = 0;
+    tick();
+  };
+
+  // O recorte de entrada ja garante que so chega clique em cima do sprite.
+  document.addEventListener('click', function () {
+    if (leaving) return;
+    leaving = true;
+    send({ t: 'click' });
+    window.mascotExit();
+  });
+
+  tick();
+})();
+</script>

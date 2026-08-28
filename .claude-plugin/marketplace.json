@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claude-reminder",
+  "description": "O mascote do Claude aparece, se mexe e faz barulho quando o Claude precisa de voce.",
+  "owner": {
+    "name": "Rafael Maestro",
+    "url": "https://github.com/rafaelmaestro"
+  },
+  "plugins": [
+    {
+      "name": "claude-mascot",
+      "description": "Overlay animado em pixel art: chama sua atencao quando o Claude pede permissao e comemora quando termina. Clique nele para voltar ao terminal.",
+      "source": "./claude-mascot",
+      "category": "productivity"
+    }
+  ]
+}

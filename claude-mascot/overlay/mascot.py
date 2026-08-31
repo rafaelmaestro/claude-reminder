@@ -2,8 +2,8 @@
 """Overlay do mascote do Claude.
 
 Um processo por evento (design D3): abre a janela, anima, morre. Sem daemon,
-sem IPC, sem orfao. A animacao em si mora em mascot.html; aqui fica so o que
-precisa falar com o X11.
+sem IPC, sem orfao. A animacao em si mora em mascot.html, e a conversa com o
+X11 ou com o compositor Wayland mora em wm.py; aqui fica o meio de campo.
 """
 import argparse
 import json
@@ -21,6 +21,17 @@ gi.require_version("Gdk", "3.0")
 gi.require_version("WebKit2", "4.1")
 from gi.repository import Gdk, GLib, Gtk, WebKit2  # noqa: E402
 import cairo  # noqa: E402
+
+import wm  # noqa: E402
+
+# No Wayland a janela nao escolhe onde nasce — o compositor escolhe. O
+# wlr-layer-shell devolve essa escolha para o cliente, e o gtk-layer-shell e o
+# binding dele. Sem a typelib, o backend Wayland simplesmente nao existe.
+try:
+    gi.require_version("GtkLayerShell", "0.1")
+    from gi.repository import GtkLayerShell  # noqa: E402
+except (ValueError, ImportError):
+    GtkLayerShell = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(
@@ -91,60 +102,15 @@ def play_sound(state, cfg):
         pass  # sem audio a animacao continua (spec)
 
 
-def active_monitor_geometry(display):
-    """Monitor que contem a janela ativa AGORA — nao o canto do desktop virtual.
-
-    Num desktop de 5360px, o canto inferior direito do desktop pode estar a tres
-    mil pixels de onde o usuario esta olhando (design D6).
-    """
-    try:
-        out = subprocess.run(
-            ["xdotool", "getactivewindow", "getwindowgeometry", "--shell"],
-            capture_output=True,
-            text=True,
-            timeout=1,
-        ).stdout
-        vals = dict(
-            line.split("=", 1) for line in out.strip().splitlines() if "=" in line
-        )
-        cx = int(vals["X"]) + int(vals["WIDTH"]) // 2
-        cy = int(vals["Y"]) + int(vals["HEIGHT"]) // 2
-        monitor = display.get_monitor_at_point(cx, cy)
-        if monitor is not None:
-            return monitor.get_geometry()
-    except Exception:
-        pass
-    monitor = display.get_primary_monitor() or display.get_monitor(0)
-    return monitor.get_geometry()
-
-
 def focus_terminal(session):
-    """Ativa a janela do terminal registrada no SessionStart.
-
-    Fallback obrigatorio (design D8): se o ID nao vale mais, nao ativa nada. Um
-    clique que joga o usuario na janela errada e pior que um clique inerte.
-    """
+    """Ativa a janela do terminal registrada no SessionStart."""
     # o id vira nome de arquivo: so caracteres de id, nunca separador de caminho
     safe = re.sub(r"[^A-Za-z0-9_-]", "", session) or "default"
-    path = os.path.join(CACHE, "session-%s.win" % safe)
     try:
-        with open(path) as fh:
-            wid = fh.read().strip()
+        with open(os.path.join(CACHE, "session-%s.win" % safe)) as fh:
+            wm.focus_window(fh.read())
     except OSError:
-        return
-    if not wid:
-        return
-    try:
-        probe = subprocess.run(
-            ["xdotool", "getwindowname", wid], capture_output=True, timeout=1
-        )
-        if probe.returncode != 0:
-            return
-        subprocess.run(
-            ["xdotool", "windowactivate", wid], capture_output=True, timeout=1
-        )
-    except Exception:
-        pass
+        pass  # sessao sem janela registrada: o clique so dispensa o mascote
 
 
 class Overlay:
@@ -199,15 +165,44 @@ class Overlay:
         params = urlencode(params)
         self.view.load_uri("file://%s/mascot.html?%s" % (HERE, params))
 
-        geo = active_monitor_geometry(screen.get_display())
-        self.win.move(
-            geo.x + geo.width - self.w - MARGIN,
-            geo.y + geo.height - self.h - MARGIN,
-        )
+        display = screen.get_display()
+        if wm.backend() == "x11":
+            monitor = wm.active_monitor(display) or wm.fallback_monitor(display)
+            geo = monitor.get_geometry()
+            self.win.move(
+                geo.x + geo.width - self.w - MARGIN,
+                geo.y + geo.height - self.h - MARGIN,
+            )
+        else:
+            self.anchor_wayland(display)
 
         self.win.realize()
         self.set_hitbox(None)  # nasce inteira click-through
         self.win.show_all()
+
+    def anchor_wayland(self, display):
+        """Ancora a faixa no canto inferior direito do monitor em foco.
+
+        No Wayland `win.move()` nao faz nada: a janela pede a posicao ao
+        compositor via wlr-layer-shell. As garantias do X11 viram propriedades
+        da camada — OVERLAY substitui o keep-above, KeyboardMode.NONE substitui
+        o accept-focus, e zona exclusiva 0 impede que a faixa empurre as outras
+        janelas para o lado como uma barra faria.
+        """
+        GtkLayerShell.init_for_window(self.win)
+        GtkLayerShell.set_namespace(self.win, "claude-mascot")
+        GtkLayerShell.set_layer(self.win, GtkLayerShell.Layer.OVERLAY)
+        for edge in (GtkLayerShell.Edge.BOTTOM, GtkLayerShell.Edge.RIGHT):
+            GtkLayerShell.set_anchor(self.win, edge, True)
+            GtkLayerShell.set_margin(self.win, edge, MARGIN)
+        GtkLayerShell.set_keyboard_mode(self.win, GtkLayerShell.KeyboardMode.NONE)
+        GtkLayerShell.set_exclusive_zone(self.win, 0)
+        monitor = wm.active_monitor(display)
+        if monitor is not None:
+            # Sem isto quem escolhe o monitor e o compositor, e ele nao tem como
+            # saber qual janela pediu atencao: o palpite dele e o output em foco,
+            # que nem sempre e o do terminal do Claude Code (design D6).
+            GtkLayerShell.set_monitor(self.win, monitor)
 
     def set_hitbox(self, rect):
         """Recorta a area clicavel. Falhou? Fecha — melhor sumir do que virar um
@@ -267,6 +262,24 @@ class Overlay:
         return False
 
 
+def supported():
+    """Da para posicionar a janela aqui?
+
+    No Wayland, nao basta o compositor existir: ele precisa implementar o
+    wlr-layer-shell. O Mutter (GNOME) nao implementa, e sem ele a janela
+    nasceria no meio da tela roubando o foco — pior que nao aparecer.
+    """
+    kind = wm.backend()
+    if kind == "x11":
+        return True
+    if kind in ("hyprland", "wayland"):
+        try:
+            return GtkLayerShell is not None and GtkLayerShell.is_supported()
+        except Exception:
+            return False
+    return False
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--state", default="ask", choices=["ask", "done"])
@@ -280,6 +293,8 @@ def main():
     cfg = load_config()
     if not cfg["enabled"] or not cfg["states"].get(args.state, True):
         return
+    if not supported():
+        return  # ambiente sem onde desenhar: sai calado, como sem DISPLAY (spec)
 
     os.makedirs(CACHE, exist_ok=True)
     with open(os.path.join(CACHE, "overlay.pid"), "w") as fh:

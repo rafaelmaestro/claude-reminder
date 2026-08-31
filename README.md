@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <sub>X11 · Claude Code · zero dependência nova</sub>
+  <sub>X11 · Wayland · Claude Code · zero dependência nova</sub>
 </p>
 
 ---
@@ -46,24 +46,34 @@ Reinicie a sessão. Pronto — não tem passo dois.
 
 ### Requisitos
 
-Tudo isso já vem no Ubuntu com GNOME. Se estiver faltando algo:
+Quase tudo já vem no Ubuntu. Se estiver faltando algo:
 
 ```bash
-sudo apt install python3-gi gir1.2-webkit2-4.1 xdotool pipewire-bin \
-                 sound-theme-freedesktop
+sudo apt install python3-gi gir1.2-webkit2-4.1 pipewire-bin sound-theme-freedesktop
+sudo apt install xdotool                        # se você usa X11
+sudo apt install gir1.2-gtklayershell-0.1       # se você usa Wayland
 ```
 
 | precisa de | por quê |
 | --- | --- |
-| **X11** | posicionar janela, always-on-top e recorte de clique |
 | `python3-gi` (GTK 3.0 + WebKit2 4.1) | desenhar e animar o mascote |
-| `xdotool` | achar o monitor em foco e devolver o foco ao terminal |
 | `pw-play` (PipeWire) | tocar o som |
 | `sound-theme-freedesktop` | os arquivos de som |
+| **no X11:** `xdotool` | posicionar a janela, achar o monitor em foco, devolver o foco ao terminal |
+| **no Wayland:** `gtk-layer-shell` | posicionar a janela e mantê-la por cima |
+| **no Wayland:** `hyprctl` (só no Hyprland) | achar o monitor em foco e devolver o foco ao terminal |
 
-> **Wayland não funciona.** No Wayland um aplicativo comum não pode se
-> posicionar sozinho na tela. Se você não tem `DISPLAY` — sessão por SSH,
-> headless — o plugin simplesmente não faz nada, sem erro nenhum.
+O plugin escolhe sozinho entre os dois: quem manda é o `WAYLAND_DISPLAY` (com
+`GDK_BACKEND` por cima, se você forçou). Num compositor Wayland o `DISPLAY`
+continua existindo por causa do Xwayland, então ele não serve para decidir.
+
+**Wayland precisa do `wlr-layer-shell`** — o protocolo que deixa um cliente
+escolher o canto da tela onde nasce. Hyprland, Sway, Niri, Wayfire e o KDE
+Plasma implementam. O GNOME (Mutter) não implementa: lá o plugin sai calado em
+vez de abrir uma janela no meio da tela roubando o seu foco.
+
+Sem nenhum servidor gráfico — sessão por SSH, headless — o plugin simplesmente
+não faz nada, sem erro nenhum.
 
 ---
 
@@ -107,7 +117,14 @@ Arquivo ausente ou com JSON inválido: usa os padrões e segue funcionando.
 
 ## Limitações conhecidas
 
-- X11 apenas. Wayland, macOS e Windows não.
+- Linux apenas: X11, ou Wayland com `wlr-layer-shell` (não o GNOME). macOS e
+  Windows não.
+- **No Wayland fora do Hyprland**, o mascote aparece e anima, mas o monitor
+  vira palpite do compositor (normalmente o que está em foco, sem garantia) e o
+  clique só dispensa o mascote em vez de trazer o terminal de volta. Não existe
+  protocolo padrão para perguntar quem está em foco nem para ativar uma janela;
+  cada compositor resolve com o próprio IPC. O do Hyprland (`hyprctl`) está em
+  `overlay/wm.py` e serve de molde para os outros.
 - Um mascote por vez na máquina — várias sessões do Claude Code disputam o
   mesmo canto, e o evento mais recente vence.
 - O clique depende da janela do terminal registrada no `SessionStart`. Se ela

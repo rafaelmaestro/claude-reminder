@@ -5,8 +5,9 @@
 # animacao, nunca le a decisao de ferramenta e sempre sai com 0 — qualquer
 # outra coisa vira atraso ou erro na sessao do Claude Code.
 
-# Sem ambiente grafico (SSH, headless, Wayland sem Xwayland) o plugin nao existe.
-[ -n "$DISPLAY" ] || exit 0
+# Sem ambiente grafico nenhum (SSH, headless) o plugin nao existe. Qual dos dois
+# servidores usar e decisao do overlay/wm.py, que ve o GDK_BACKEND tambem.
+[ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ] || exit 0
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE="${XDG_CACHE_HOME:-$HOME/.cache}/claude-mascot"
@@ -46,8 +47,9 @@ case "$CMD" in
     sid="$(read_session)"
     # Neste instante o usuario acabou de rodar `claude`: a janela em foco e o
     # terminal da sessao. E a unica hora em que da pra saber isso com certeza.
-    win="$(xdotool getactivewindow 2>/dev/null)" || win=""
-    [ -n "$win" ] && printf '%s' "$win" > "$STATE/session-$sid.win"
+    # Quem pergunta ao X11 ou ao compositor e o wm.py — o hook nao sabe a
+    # diferenca, e assim nao precisa de jq para ler o JSON do hyprctl.
+    python3 "$ROOT/overlay/wm.py" record "$STATE/session-$sid.win" 2>/dev/null
     ;;
 
   show)

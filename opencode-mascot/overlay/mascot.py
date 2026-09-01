@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
-"""Overlay do mascote do Claude.
+"""Overlay do mascote do OpenCode.
 
 Um processo por evento (design D3): abre a janela, anima, morre. Sem daemon,
 sem IPC, sem orfao. A animacao em si mora em mascot.html, e a conversa com o
 X11 ou com o compositor Wayland mora em wm.py; aqui fica o meio de campo.
+
+Paleta OpenCode: corpo grafite #4B4646 / #211E1E (brand), destaque claro
+#CFCECD / #F1ECEC — distinto do laranja #d97757 do Claude.
 """
 import argparse
 import json
@@ -35,11 +38,11 @@ except (ValueError, ImportError):
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CACHE = os.path.join(
-    os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "claude-mascot"
+    os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "opencode-mascot"
 )
 CONFIG = os.path.join(
     os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-    "claude-mascot",
+    "opencode-mascot",
     "config.json",
 )
 
@@ -131,12 +134,12 @@ class Overlay:
         self.win.set_skip_pager_hint(True)
         self.win.set_keep_above(True)
         # Nao negociavel: se a janela pegar foco, ela come as teclas que o
-        # usuario esta digitando como resposta ao Claude.
+        # usuario esta digitando como resposta ao OpenCode.
         self.win.set_accept_focus(False)
         self.win.set_focus_on_map(False)
         self.win.set_type_hint(Gdk.WindowTypeHint.NOTIFICATION)
         self.win.set_app_paintable(True)
-        self.win.set_title("claude-mascot")
+        self.win.set_title("opencode-mascot")
         self.win.set_default_size(self.w, self.h)
         # A WebView tem tamanho minimo proprio; sem isto a janela nasce mais
         # alta que a faixa e o mascote fica deslocado da borda do monitor.
@@ -190,7 +193,7 @@ class Overlay:
         janelas para o lado como uma barra faria.
         """
         GtkLayerShell.init_for_window(self.win)
-        GtkLayerShell.set_namespace(self.win, "claude-mascot")
+        GtkLayerShell.set_namespace(self.win, "opencode-mascot")
         GtkLayerShell.set_layer(self.win, GtkLayerShell.Layer.OVERLAY)
         for edge in (GtkLayerShell.Edge.BOTTOM, GtkLayerShell.Edge.RIGHT):
             GtkLayerShell.set_anchor(self.win, edge, True)
@@ -201,7 +204,7 @@ class Overlay:
         if monitor is not None:
             # Sem isto quem escolhe o monitor e o compositor, e ele nao tem como
             # saber qual janela pediu atencao: o palpite dele e o output em foco,
-            # que nem sempre e o do terminal do Claude Code (design D6).
+            # que nem sempre e o do terminal do OpenCode (design D6).
             GtkLayerShell.set_monitor(self.win, monitor)
 
     def set_hitbox(self, rect):

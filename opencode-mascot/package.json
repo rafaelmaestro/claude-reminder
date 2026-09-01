@@ -1,7 +1,7 @@
 {
-  "name": "opencode-claude-mascot",
+  "name": "opencode-mascot",
   "version": "0.1.0",
-  "description": "O mascote do Claude para o OpenCode — overlay animado em pixel art: chama sua atencao quando precisa de permissao e comemora quando termina.",
+  "description": "Mascote do OpenCode — overlay animado em pixel art nas cores da marca (grafite #4B4646 / #CFCECD): chama sua atencao quando precisa de permissao e comemora quando termina. Distinto do mascote laranja do Claude.",
   "type": "module",
   "exports": {
     ".": "./src/index.ts"

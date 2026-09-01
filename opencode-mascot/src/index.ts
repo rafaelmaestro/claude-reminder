@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url"
 
 function getCacheDir(): string {
   const base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache")
-  return path.join(base, "claude-mascot")
+  return path.join(base, "opencode-mascot")
 }
 
 function getOverlayDir(): string {
@@ -132,7 +132,7 @@ function show(state: "ask" | "done", sessionID: string, cacheDir: string, overla
 }
 
 export default Plugin.define({
-  id: "claude-mascot",
+  id: "opencode-mascot",
   async setup(ctx) {
     const cacheDir = ensureCache()
     const overlayDir = getOverlayDir()

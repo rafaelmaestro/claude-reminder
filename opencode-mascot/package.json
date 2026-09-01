@@ -1,0 +1,24 @@
+{
+  "name": "opencode-mascot",
+  "version": "0.1.0",
+  "description": "Mascote do OpenCode — overlay animado em pixel art nas cores da marca (grafite #4B4646 / #CFCECD): chama sua atencao quando precisa de permissao e comemora quando termina. Distinto do mascote laranja do Claude.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "mascot",
+    "overlay",
+    "notification"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "beta"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "typescript": "^5.9.0"
+  }
+}

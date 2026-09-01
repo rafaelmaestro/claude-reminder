@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 .claude/
 openspec/
+node_modules/
+opencode-mascot/node_modules/
+.opencode/

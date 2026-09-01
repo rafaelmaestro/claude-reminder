@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <sub>X11 · Wayland · Claude Code · zero dependência nova</sub>
+  <sub>X11 · Wayland · Claude Code · OpenCode · zero dependência nova</sub>
 </p>
 
 ---
@@ -35,7 +35,7 @@ o terminal volta pra frente e ele sai andando.
 
 ## Instalação
 
-Dentro do Claude Code:
+### Claude Code
 
 ```
 /plugin marketplace add rafaelmaestro/claude-reminder
@@ -43,6 +43,27 @@ Dentro do Claude Code:
 ```
 
 Reinicie a sessão. Pronto — não tem passo dois.
+
+### OpenCode
+
+No `opencode.json` (global `~/.config/opencode/opencode.json` ou do projeto):
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["github:rafaelmaestro/claude-reminder?path=opencode-mascot"]
+  // ou local: ["./opencode-mascot"] se você clonou o repo
+}
+```
+
+Ou copie o plugin para o diretório auto-carregado:
+
+```bash
+mkdir -p .opencode/plugins
+cp -r opencode-mascot .opencode/plugins/opencode-mascot
+```
+
+Reinicie o serviço (`opencode2 service restart`) ou reabra o TUI. Mesma animação e sons, mas com a paleta da marca OpenCode (grafite `#4B4646`/`#211E1E` + `#CFCECD`/`#F1ECEC` em vez do laranja do Claude) e config em `~/.config/opencode-mascot/config.json` — distinto do `claude-mascot`.
 
 ### Requisitos
 
@@ -87,6 +108,13 @@ não faz nada, sem erro nenhum.
 | `Stop` | Claude terminou → comemoração e tchauzinho |
 | `SessionStart` | grava qual janela é o seu terminal (pro clique funcionar) |
 
+| evento do OpenCode | o que acontece |
+| --- | --- |
+| `permission.asked` / `permission hook ask` | precisa de permissão → mascote **grafite** entra e insiste |
+| `permission.replied` / `session.status busy` / `tool.execute.after` | aprovou e rodou → mascote sai |
+| `session.idle` | terminou → comemoração grafite e tchauzinho |
+| `session.created` | grava janela do terminal |
+
 Nenhum hook lê, altera ou atrasa decisão de ferramenta. Todos saem
 imediatamente com código 0 e deixam a animação rodando em outro processo.
 
@@ -95,7 +123,7 @@ imediatamente com código 0 e deixam a animação rodando em outro processo.
 ## Configuração
 
 Opcional. Copie `claude-mascot/config.example.json` para
-`~/.config/claude-mascot/config.json`:
+`~/.config/claude-mascot/config.json` (ou `opencode-mascot/config.example.json` para `~/.config/opencode-mascot/config.json` no OpenCode):
 
 | chave | padrão | o que faz |
 | --- | --- | --- |

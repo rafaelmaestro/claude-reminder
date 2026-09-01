@@ -1,20 +1,22 @@
-// Poses do mascote. Cada pose e um bloco de texto, um caractere por celula
-// (design D5): ajustar a animacao e trocar um caractere, nao reexportar asset.
-//
-//   .  vazio      O  laranja do corpo    K  preto (olhos)
-//   G  verde (v)  P  roxo (?)            W  branco
-//
-// Corpo: 15 colunas x 12 linhas. Simbolos: 6 x 7.
-// Toda pose DEVE respeitar essas dimensoes — check.py verifica.
+# Poses do mascote. Cada pose e um bloco de texto, um caractere por celula
+# (design D5): ajustar a animacao e trocar um caractere, nao reexportar asset.
+#
+# So dados: quem desenha e mascot.py, quem coreografa e frames.py.
+#
+#   .  vazio      O  laranja do corpo    K  preto (olhos)
+#   G  verde (v)  P  roxo (?)            W  branco
+#
+# Corpo: 15 colunas x 12 linhas. Simbolos: 6 x 7.
+# Toda pose DEVE respeitar essas dimensoes — check.py verifica.
 
-// A camada de adereco tem grade propria: 5 colunas a mais que o corpo (faisca,
-// martelo) e 6 linhas ACIMA dele (poff), para caber chapeu alto. A linha `poff`
-// do adereco cai sobre a linha 0 do corpo.
-const GRID = { w: 15, h: 12, pw: 20, ph: 18, poff: 6, sw: 6, sh: 7 };
+# A camada de adereco tem grade propria: 5 colunas a mais que o corpo (faisca,
+# martelo) e 6 linhas ACIMA dele (poff), para caber chapeu alto. A linha `poff`
+# do adereco cai sobre a linha 0 do corpo.
+GRID = { "w": 15, "h": 12, "pw": 20, "ph": 18, "poff": 6, "sw": 6, "sh": 7 }
 
-const POSES = {
-  // Vista frontal, bracos na lateral, olhos abertos.
-  front: `
+POSES = {
+  # Vista frontal, bracos na lateral, olhos abertos.
+  "front": """
 ...............
 ...............
 ..OOOOOOOOOOO..
@@ -27,10 +29,10 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  // Olhos apertados: so a linha de baixo. E a piscada.
-  front_blink: `
+  # Olhos apertados: so a linha de baixo. E a piscada.
+  "front_blink": """
 ...............
 ...............
 ..OOOOOOOOOOO..
@@ -43,10 +45,10 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  // Olhos felizes fechados: dois arcos ^ ^.
-  front_happy: `
+  # Olhos felizes fechados: dois arcos ^ ^.
+  "front_happy": """
 ...............
 ...............
 ..OOOOOOOOOOO..
@@ -59,10 +61,10 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  // Piscadinha: um olho aberto, outro em arco.
-  front_wink: `
+  # Piscadinha: um olho aberto, outro em arco.
+  "front_wink": """
 ...............
 ...............
 ..OOOOOOOOOOO..
@@ -75,10 +77,10 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  // Bracos levantados acima da cabeca (chamando atencao / comemorando).
-  front_up: `
+  # Bracos levantados acima da cabeca (chamando atencao / comemorando).
+  "front_up": """
 .O...........O.
 .O...........O.
 .OOOOOOOOOOOOO.
@@ -91,9 +93,9 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  front_up_happy: `
+  "front_up_happy": """
 .O...........O.
 .O...........O.
 .OOOOOOOOOOOOO.
@@ -106,12 +108,12 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  // Aceno: um braco pra cima, o outro na lateral. Alternando os dois da o
-  // tchauzinho de verdade — o front_up sozinho lia como bicho parado de bracos
-  // pra cima, nao como alguem acenando.
-  front_wave_a: `
+  # Aceno: um braco pra cima, o outro na lateral. Alternando os dois da o
+  # tchauzinho de verdade — o front_up sozinho lia como bicho parado de bracos
+  # pra cima, nao como alguem acenando.
+  "front_wave_a": """
 .O.............
 .O.............
 .OOOOOOOOOOOO..
@@ -124,9 +126,9 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  front_wave_b: `
+  "front_wave_b": """
 .............O.
 .............O.
 ..OOOOOOOOOOOO.
@@ -139,10 +141,10 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  // Olhos de 3x3: arregalado, pedindo socorro.
-  front_wide: `
+  # Olhos de 3x3: arregalado, pedindo socorro.
+  "front_wide": """
 ...............
 ...............
 ..OOOOOOOOOOO..
@@ -155,10 +157,10 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
 
-  front_up_blink: `
+  "front_up_blink": """
 .O...........O.
 .O...........O.
 .OOOOOOOOOOOOO.
@@ -171,9 +173,9 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  front_up_wink: `
+  "front_up_wink": """
 .O...........O.
 .O...........O.
 .OOOOOOOOOOOOO.
@@ -186,10 +188,10 @@ const POSES = {
 ..OOOOOOOOOOO..
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  // Achatado e mais largo: o susto de quem levou um clique.
-  front_squash: `
+  # Achatado e mais largo: o susto de quem levou um clique.
+  "front_squash": """
 ...............
 ...............
 ...............
@@ -202,10 +204,10 @@ const POSES = {
 .OOOOOOOOOOOOO.
 ..O.O.....O.O..
 ..O.O.....O.O..
-`,
+""",
 
-  // Vista lateral com focinho, quadro A do ciclo de caminhada.
-  side_a: `
+  # Vista lateral com focinho, quadro A do ciclo de caminhada.
+  "side_a": """
 ...............
 ...............
 ....OOOOOOOO...
@@ -218,10 +220,10 @@ const POSES = {
 ....OOOOOOOO...
 ....O.O..O.O...
 ....O....O.....
-`,
+""",
 
-  // Quadro B: as outras duas patas apoiam.
-  side_b: `
+  # Quadro B: as outras duas patas apoiam.
+  "side_b": """
 ...............
 ...............
 ....OOOOOOOO...
@@ -234,14 +236,14 @@ const POSES = {
 ....OOOOOOOO...
 ....O.O..O.O...
 ......O....O...
-`,
-};
+""",
+}
 
-// Simbolo acima da cabeca. E ele que chama a atencao de longe — o corpo
-// laranja de 70px nao e pego pela visao periferica numa tela de 5360px (D11).
-const SYMBOLS = {
+# Simbolo acima da cabeca. E ele que chama a atencao de longe — o corpo
+# laranja de 70px nao e pego pela visao periferica numa tela de 5360px (D11).
+SYMBOLS = {
 
-  bulb_on: `
+  "bulb_on": """
 ..YY..
 .YYYY.
 YYYYYY
@@ -249,9 +251,9 @@ YYYYYY
 .YYYY.
 .AAAA.
 ..AA..
-`,
+""",
 
-  bulb_off: `
+  "bulb_off": """
 ..AA..
 .A..A.
 A....A
@@ -259,10 +261,10 @@ A....A
 .A..A.
 .AAAA.
 ..AA..
-`,
+""",
 
 
-  heart: `
+  "heart": """
 .RR.RR
 RRRRRR
 RRRRRR
@@ -270,20 +272,20 @@ RRRRRR
 ..RR..
 ......
 ......
-`,
+""",
 
 
 
-};
+}
 
-// Camada de adereco, desenhada por cima do corpo e alinhada com ele. Assim uma
-// variacao nova nao exige redesenhar as 12 poses do corpo.
-const PROPS = {
-  // Cada adereco tem versao de frente e de perfil. O motor escolhe pela pose,
-  // e aplica em TODOS os quadros da sequencia — inclusive na entrada e na
-  // saida andando. Sem isso o objeto pisca: aparece quando ele vira de frente
-  // e some quando vira de lado.
-  headphones: `
+# Camada de adereco, desenhada por cima do corpo e alinhada com ele. Assim uma
+# variacao nova nao exige redesenhar as 12 poses do corpo.
+PROPS = {
+  # Cada adereco tem versao de frente e de perfil. O motor escolhe pela pose,
+  # e aplica em TODOS os quadros da sequencia — inclusive na entrada e na
+  # saida andando. Sem isso o objeto pisca: aparece quando ele vira de frente
+  # e some quando vira de lado.
+  "headphones": """
 ....................
 ....................
 ....................
@@ -302,9 +304,9 @@ BBB.........BBB.....
 ....................
 ....................
 ....................
-`,
+""",
 
-  headphones_side: `
+  "headphones_side": """
 ....................
 ....................
 ....................
@@ -323,11 +325,11 @@ BBB.........BBB.....
 ....................
 ....................
 ....................
-`,
+""",
 
 
-  // Capacete + martelo erguido.
-  work_a: `
+  # Capacete + martelo erguido.
+  "work_a": """
 ....................
 ....................
 ....................
@@ -346,10 +348,10 @@ BBB.........BBB.....
 .............NN.....
 ....................
 ....................
-`,
+""",
 
 
-  work_side: `
+  "work_side": """
 ....................
 ....................
 ....................
@@ -368,15 +370,15 @@ BBB.........BBB.....
 .............NN.....
 ....................
 ....................
-`,
+""",
 
-  // Xicara branca com cafe escuro e alca, vapor subindo. Dois quadros: so o
-  // vapor se mexe — o braco que segura a xicara nao pode mudar de pose.
-  // Xicara: colunas 12-14, fora das colunas dos olhos (9-11), com a alca na
-  // altura do braco. Cafe escuro no topo, base escura embaixo — branco puro sem
-  // borda lia como um buraco no corpo, nao como um objeto.
-  // O braco que a segura nao muda de pose em nenhum quadro: quem anima e o vapor.
-  mug_a: `
+  # Xicara branca com cafe escuro e alca, vapor subindo. Dois quadros: so o
+  # vapor se mexe — o braco que segura a xicara nao pode mudar de pose.
+  # Xicara: colunas 12-14, fora das colunas dos olhos (9-11), com a alca na
+  # altura do braco. Cafe escuro no topo, base escura embaixo — branco puro sem
+  # borda lia como um buraco no corpo, nao como um objeto.
+  # O braco que a segura nao muda de pose em nenhum quadro: quem anima e o vapor.
+  "mug_a": """
 ....................
 ....................
 ....................
@@ -395,9 +397,9 @@ BBB.........BBB.....
 ............KKK.....
 ....................
 ....................
-`,
+""",
 
-  mug_b: `
+  "mug_b": """
 ....................
 ....................
 ....................
@@ -416,9 +418,9 @@ BBB.........BBB.....
 ............KKK.....
 ....................
 ....................
-`,
+""",
 
-  mug_side: `
+  "mug_side": """
 ....................
 ....................
 ....................
@@ -437,19 +439,19 @@ BBB.........BBB.....
 ............KKK.....
 ....................
 ....................
-`,
+""",
 
 
 
 
 
 
-  // Oculos escuros como adereco, e nao como pose do corpo: assim existem em
-  // TODOS os quadros da variacao, inclusive na piscada e na caminhada. Como
-  // pose, sumiam nos quadros que usavam outra expressao — o rosto piscava.
-  // As lentes sao mais largas que os olhos e a ponte liga as duas: sem ela, le
-  // como olho grande, nao como oculos.
-  shades: `
+  # Oculos escuros como adereco, e nao como pose do corpo: assim existem em
+  # TODOS os quadros da variacao, inclusive na piscada e na caminhada. Como
+  # pose, sumiam nos quadros que usavam outra expressao — o rosto piscava.
+  # As lentes sao mais largas que os olhos e a ponte liga as duas: sem ela, le
+  # como olho grande, nao como oculos.
+  "shades": """
 ....................
 ....................
 ....................
@@ -468,9 +470,9 @@ BBB.........BBB.....
 ....................
 ....................
 ....................
-`,
+""",
 
-  shades_side: `
+  "shades_side": """
 ....................
 ....................
 ....................
@@ -489,15 +491,15 @@ BBB.........BBB.....
 ....................
 ....................
 ....................
-`,
+""",
 
 
 
-  // Bau de tesouro. Ele chega carregando o bau fechado, poe no chao e abre.
-  // Nenhum quadro desta variacao desloca o corpo na vertical: bau e objeto de
-  // chao, e o adereco acompanha a posicao do corpo — se ele pulasse, o bau
-  // subiria junto.
-  chest_closed: `
+  # Bau de tesouro. Ele chega carregando o bau fechado, poe no chao e abre.
+  # Nenhum quadro desta variacao desloca o corpo na vertical: bau e objeto de
+  # chao, e o adereco acompanha a posicao do corpo — se ele pulasse, o bau
+  # subiria junto.
+  "chest_closed": """
 ....................
 ....................
 ....................
@@ -516,9 +518,9 @@ BBB.........BBB.....
 ............NNNNNNN.
 ............NNNYNNN.
 ............NNNNNNN.
-`,
+""",
 
-  chest_open: `
+  "chest_open": """
 ....................
 ....................
 ....................
@@ -537,9 +539,9 @@ BBB.........BBB.....
 ............NYYYYYN.
 ............NNNNNNN.
 ............NNNNNNN.
-`,
+""",
 
-  chest_shine: `
+  "chest_shine": """
 ....................
 ....................
 ....................
@@ -558,13 +560,13 @@ BBB.........BBB.....
 ............NYWYYYN.
 ............NNNNNNN.
 ............NNNNNNN.
-`,
+""",
 
-  // Placa redonda erguida acima da cabeca, com o check dentro. A borda escura e
-  // o que faz ler como placa: branco puro contra o fundo vira um buraco. Ela e
-  // segurada pelos dois bracos erguidos, entao a variacao nao muda de pose de
-  // braco em nenhum quadro — so os olhos, o balanco e o pulo, que a levam junto.
-  sign: `
+  # Placa redonda erguida acima da cabeca, com o check dentro. A borda escura e
+  # o que faz ler como placa: branco puro contra o fundo vira um buraco. Ela e
+  # segurada pelos dois bracos erguidos, entao a variacao nao muda de pose de
+  # braco em nenhum quadro — so os olhos, o balanco e o pulo, que a levam junto.
+  "sign": """
 .....KKKKK..........
 ...KWWWWWWWK........
 ..KWWWWWWGGWK.......
@@ -583,16 +585,16 @@ BBB.........BBB.....
 ....................
 ....................
 ....................
-`,
+""",
 
 
 
 
 
-  // Fogos de artificio: tres quadros com estouros trocando de cor e de posicao.
-  // Nao ha objeto na mao, entao esta e a unica variacao de conclusao em que os
-  // bracos podem subir e descer a vontade.
-  fw_a: `
+  # Fogos de artificio: tres quadros com estouros trocando de cor e de posicao.
+  # Nao ha objeto na mao, entao esta e a unica variacao de conclusao em que os
+  # bracos podem subir e descer a vontade.
+  "fw_a": """
 ..R.R...............
 .R...R..............
 ...W..........Y.Y...
@@ -611,9 +613,9 @@ Y.............Y.Y...
 ....................
 ....................
 ....................
-`,
+""",
 
-  fw_b: `
+  "fw_b": """
 .............P.P....
 ....G.G.....P...P...
 ...G...G......W.....
@@ -632,9 +634,9 @@ B...G.G.............
 ....................
 ....................
 ....................
-`,
+""",
 
-  fw_c: `
+  "fw_c": """
 .......R............
 ...............B.B..
 .Y.Y..........B...B.
@@ -653,7 +655,7 @@ Y...Y..........B.B..
 ....................
 ....................
 ....................
-`,
+""",
 
 
 
@@ -661,4 +663,4 @@ Y...Y..........B.B..
 
 
 
-};
+}

@@ -6,66 +6,62 @@ desloca meio corpo do mascote. E o modo de falha mais provavel deste projeto,
 entao e o que o check cobre. Rode: python3 check.py
 """
 import os
-import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+
+import frames  # noqa: E402
+import mascot  # noqa: E402
+from poses import GRID, POSES, PROPS, SYMBOLS  # noqa: E402
+
 PALETTE = set(".OKWGPBYARN")
 
 
-def blocks(src, section):
-    """Extrai os blocos `nome: \\`...\\`` de dentro de um const do poses.js."""
-    start = src.index("const %s" % section)
-    depth, i = 0, src.index("{", start)
-    for j in range(i, len(src)):
-        if src[j] == "{":
-            depth += 1
-        elif src[j] == "}":
-            depth -= 1
-            if depth == 0:
-                body = src[i : j + 1]
-                break
-    return re.findall(r"(\w+)\s*:\s*`\n(.*?)`", body, re.S)
-
-
 def main():
-    src = open(os.path.join(HERE, "poses.js")).read()
-    dims = dict(re.findall(r"(\w+):\s*(\d+)", src[src.index("const GRID") : src.index("const POSES")]))
     errors = []
 
-    for section, w, h in (("POSES", int(dims["w"]), int(dims["h"])),
-                          ("PROPS", int(dims["pw"]), int(dims["ph"])),
-                          ("SYMBOLS", int(dims["sw"]), int(dims["sh"]))):
-        found = blocks(src, section)
-        assert found, "nenhuma pose encontrada em %s" % section
-        for name, body in found:
-            rows = body.split("\n")[:-1] if body.endswith("\n") else body.split("\n")
+    for label, art, w, h in (
+        ("POSES", POSES, GRID["w"], GRID["h"]),
+        ("PROPS", PROPS, GRID["pw"], GRID["ph"]),
+        ("SYMBOLS", SYMBOLS, GRID["sw"], GRID["sh"]),
+    ):
+        assert art, "nenhuma pose encontrada em %s" % label
+        for name, block in art.items():
+            rows = block.strip("\n").split("\n")
             if len(rows) != h:
-                errors.append("%s.%s: %d linhas, esperado %d" % (section, name, len(rows), h))
+                errors.append("%s.%s: %d linhas, esperado %d" % (label, name, len(rows), h))
             for n, row in enumerate(rows):
                 if len(row) != w:
                     errors.append("%s.%s linha %d: %d colunas, esperado %d"
-                                  % (section, name, n, len(row), w))
+                                  % (label, name, n, len(row), w))
                 bad = set(row) - PALETTE
                 if bad:
                     errors.append("%s.%s linha %d: caractere fora da paleta %s"
-                                  % (section, name, n, sorted(bad)))
-        print("%s: %d poses verificadas" % (section, len(found)))
+                                  % (label, name, n, sorted(bad)))
+        print("%s: %d poses verificadas" % (label, len(art)))
 
-    # As sequencias so podem citar poses e simbolos que existem.
-    html = open(os.path.join(HERE, "mascot.html")).read()
-    known_p = {n for n, _ in blocks(src, "POSES")}
-    known_s = {n for n, _ in blocks(src, "SYMBOLS")}
-    known_r = {n for n, _ in blocks(src, "PROPS")}
-    for ref in set(re.findall(r"\bp:\s*'(\w+)'", html)):
-        if ref not in known_p:
-            errors.append("mascot.html usa pose inexistente: %s" % ref)
-    for ref in set(re.findall(r"sym:\s*'(\w+)'", html)):
-        if ref not in known_s:
-            errors.append("mascot.html usa simbolo inexistente: %s" % ref)
-    for ref in set(re.findall(r"prop:\s*'(\w+)'", html)):
-        if ref not in known_r:
-            errors.append("mascot.html usa adereco inexistente: %s" % ref)
+    # A paleta do desenho tem que cobrir todo caractere que a arte usa: um
+    # caractere sem cor nao quebra, so abre um buraco no meio do mascote.
+    for ch in PALETTE:
+        if ch not in mascot.PAL:
+            errors.append("mascot.PAL nao tem cor para o caractere %r" % ch)
+
+    # As sequencias so podem citar poses, simbolos e adereços que existem, em
+    # TODAS as variacoes — inclusive as que o sorteio quase nunca escolhe.
+    seen = 0
+    for state, variants in (("ask", frames.ASK_VARIANTS), ("done", frames.DONE_VARIANTS)):
+        for i in range(len(variants)):
+            intro, loop, out = frames.sequence(state, i)
+            for f in intro + loop + out:
+                seen += 1
+                if f["p"] not in POSES:
+                    errors.append("%s[%d] usa pose inexistente: %s" % (state, i, f["p"]))
+                if f.get("sym") and f["sym"] not in SYMBOLS:
+                    errors.append("%s[%d] usa simbolo inexistente: %s" % (state, i, f["sym"]))
+                if f.get("prop") and f["prop"] not in PROPS:
+                    errors.append("%s[%d] usa adereco inexistente: %s" % (state, i, f["prop"]))
+    print("SEQUENCIAS: %d quadros verificados" % seen)
 
     if errors:
         print("\nFALHOU:")

@@ -2,8 +2,15 @@
 """Overlay do mascote do Claude.
 
 Um processo por evento (design D3): abre a janela, anima, morre. Sem daemon,
-sem IPC, sem orfao. A animacao em si mora em mascot.html, e a conversa com o
-X11 ou com o compositor Wayland mora em wm.py; aqui fica o meio de campo.
+sem IPC, sem orfao. A arte mora em poses.py, a coreografia em frames.py, e a
+conversa com o X11 ou com o compositor Wayland mora em wm.py; aqui fica o meio
+de campo: a janela, o desenho e o clique.
+
+O desenho e cairo puro. Ja foi uma WebView, e ela deixava rastro: a WebKitGTK
+2.52 nao limpa a superficie quando o fundo da pagina e transparente — ela
+compoe cada quadro por cima do anterior, entao todo pixel por onde o mascote
+passou ficava na tela. Nao ha ajuste de pagina, de GTK nem de compositor que
+resolva; desenhar direto resolve, e ainda tira uma dependencia.
 """
 import argparse
 import json
@@ -12,17 +19,17 @@ import re
 import signal
 import subprocess
 import sys
-from urllib.parse import urlencode
 
 import gi
 
 gi.require_version("Gtk", "3.0")
 gi.require_version("Gdk", "3.0")
-gi.require_version("WebKit2", "4.1")
-from gi.repository import Gdk, GLib, Gtk, WebKit2  # noqa: E402
+from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 import cairo  # noqa: E402
 
+import frames  # noqa: E402
 import wm  # noqa: E402
+from poses import GRID, POSES, PROPS, SYMBOLS  # noqa: E402
 
 # No Wayland a janela nao escolhe onde nasce — o compositor escolhe. O
 # wlr-layer-shell devolve essa escolha para o cliente, e o gtk-layer-shell e o
@@ -45,9 +52,31 @@ CONFIG = os.path.join(
 
 # Tamanho da faixa em celulas. A faixa e maior que o mascote porque ele entra e
 # sai andando dentro dela — mover a janela GTK a cada frame engasga no X11.
-COLS, ROWS = 43, 24
+COLS, ROWS = frames.COLS, frames.ROWS
 MARGIN = 24  # folga ate a borda do monitor
 HIT_PAD = 8  # alvo pequeno em movimento precisa de folga de clique
+
+W, H = GRID["w"], GRID["h"]
+SW, SH = GRID["sw"], GRID["sh"]
+PW, PH, POFF = GRID["pw"], GRID["ph"], GRID["poff"]
+
+# Um caractere por celula (design D5). None e vazio.
+PAL = {
+    ".": None,
+    "O": (0xD9, 0x77, 0x57),  # corpo
+    "K": (0x19, 0x19, 0x19),  # olhos
+    "W": (0xFF, 0xFF, 0xFF),
+    "G": (0x2B, 0xA8, 0x4A),  # check
+    "P": (0x6B, 0x4F, 0xD8),  # interrogacao
+    "B": (0x1F, 0x4E, 0x8C),  # fone
+    "Y": (0xF0, 0xB2, 0x3C),  # capacete, lampada
+    "A": (0x9A, 0x9A, 0x9A),  # metal
+    "R": (0xE0, 0x31, 0x31),  # coracao
+    "N": (0x8A, 0x5A, 0x3B),  # madeira do bau
+}
+
+SHADOW = (0, 0, 0, 0.35)   # sombra dura, sem desfoque: idioma pixel art
+GROUND = (0, 0, 0, 0.22)   # a marca no chao, que nao sobe junto no pulo
 
 DEFAULTS = {
     "enabled": True,
@@ -113,6 +142,10 @@ def focus_terminal(session):
         pass  # sessao sem janela registrada: o clique so dispensa o mascote
 
 
+def rows(block):
+    return block.strip("\n").split("\n")
+
+
 class Overlay:
     def __init__(self, state, session, cfg, variant=None, bg=None):
         self.state = state
@@ -121,8 +154,14 @@ class Overlay:
         self.cell = max(3, int(cfg["cell"]))
         self.w = COLS * self.cell
         self.h = ROWS * self.cell
+        self.shadow = max(2, round(self.cell * 0.45))
+        self.bg = parse_color(bg)  # fundo opaco: so para gravar o GIF
         self.hit = None
         self.exiting = False
+        self.frame = None
+
+        self.intro, self.loop, self.out = frames.sequence(state, variant)
+        self.phase, self.index, self.timer = "intro", 0, None
 
         self.win = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
         self.win.set_decorated(False)
@@ -138,9 +177,10 @@ class Overlay:
         self.win.set_app_paintable(True)
         self.win.set_title("claude-mascot")
         self.win.set_default_size(self.w, self.h)
-        # A WebView tem tamanho minimo proprio; sem isto a janela nasce mais
-        # alta que a faixa e o mascote fica deslocado da borda do monitor.
         self.win.set_size_request(self.w, self.h)
+        self.win.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+        self.win.connect("button-press-event", self.on_click)
+        self.win.connect("draw", self.on_draw)
         self.win.connect("destroy", Gtk.main_quit)
 
         screen = self.win.get_screen()
@@ -148,22 +188,6 @@ class Overlay:
         if visual is None:
             sys.exit(0)  # sem compositor nao ha transparencia: sai calado
         self.win.set_visual(visual)
-
-        ucm = WebKit2.UserContentManager()
-        ucm.register_script_message_handler("mascot")
-        ucm.connect("script-message-received::mascot", self.on_message)
-        self.view = WebKit2.WebView.new_with_user_content_manager(ucm)
-        self.view.set_background_color(Gdk.RGBA(0, 0, 0, 0))
-        self.view.set_size_request(self.w, self.h)
-        self.win.add(self.view)
-
-        params = {"cell": self.cell, "cols": COLS, "rows": ROWS, "state": state}
-        if bg:
-            params["bg"] = bg             # fundo opaco: so para gravar o GIF
-        if variant is not None:
-            params["variant"] = variant   # so para iterar a arte; o uso normal sorteia
-        params = urlencode(params)
-        self.view.load_uri("file://%s/mascot.html?%s" % (HERE, params))
 
         display = screen.get_display()
         if wm.backend() == "x11":
@@ -204,6 +228,76 @@ class Overlay:
             # que nem sempre e o do terminal do Claude Code (design D6).
             GtkLayerShell.set_monitor(self.win, monitor)
 
+    # --- desenho -------------------------------------------------------------
+
+    def on_draw(self, _widget, cr):
+        # Uma faixa limpa por quadro. Este zero e o conserto do rastro: com
+        # OPERATOR_SOURCE o alfa e escrito, nao misturado — pintar transparente
+        # por cima com o operador padrao nao apagaria nada.
+        cr.set_operator(cairo.OPERATOR_SOURCE)
+        if self.bg:
+            cr.set_source_rgb(*self.bg)
+        else:
+            cr.set_source_rgba(0, 0, 0, 0)
+        cr.paint()
+        cr.set_operator(cairo.OPERATOR_OVER)
+
+        f = self.frame
+        if f is None:
+            return False
+
+        if f.get("ground"):
+            wide = f["ground"] == "wide"
+            cr.set_source_rgba(*GROUND)
+            cr.rectangle((f["x"] + (2 if wide else 4)) * self.cell,
+                         frames.GROUND_Y * self.cell,
+                         (11 if wide else 7) * self.cell, self.cell)
+            cr.fill()
+
+        # Ordem de empilhamento: simbolo atras do corpo, adereco na frente dele.
+        if f.get("sym"):
+            self.blit(cr, SYMBOLS[f["sym"]], SW, SH,
+                      f["x"] + 4 + f.get("symDx", 0),
+                      f["y"] - 5 + f.get("symDy", 0))
+        self.blit(cr, POSES[f["p"]], W, H, f["x"], f["y"], f.get("flip"))
+        # Adereco anda colado no corpo: mesma coluna, POFF linhas acima. Nunca
+        # espelha — inverter jogaria a varinha dentro do corpo.
+        if f.get("prop"):
+            self.blit(cr, PROPS[f["prop"]], PW, PH, f["x"], f["y"] - POFF)
+        return False
+
+    def blit(self, cr, block, w, h, ox, oy, flip=False):
+        """Desenha um bloco de arte: a silhueta deslocada e, por cima, as cores.
+
+        Duas passadas porque a sombra e da silhueta inteira — desenhar sombra e
+        cor celula a celula deixaria a sombra de uma celula por cima da cor da
+        vizinha.
+        """
+        art = rows(block)
+        cell = self.cell
+        shade = self.shadow
+
+        cr.set_source_rgba(*SHADOW)
+        for y in range(h):
+            row = art[y] if y < len(art) else ""
+            for x in range(w):
+                sx = w - 1 - x if flip else x
+                if sx < len(row) and PAL.get(row[sx]):
+                    cr.rectangle((ox + x) * cell + shade,
+                                 (oy + y) * cell + shade, cell, cell)
+        cr.fill()
+
+        for y in range(h):
+            row = art[y] if y < len(art) else ""
+            for x in range(w):
+                sx = w - 1 - x if flip else x
+                ink = PAL.get(row[sx]) if sx < len(row) else None
+                if not ink:
+                    continue
+                cr.set_source_rgb(ink[0] / 255, ink[1] / 255, ink[2] / 255)
+                cr.rectangle((ox + x) * cell, (oy + y) * cell, cell, cell)
+                cr.fill()
+
     def set_hitbox(self, rect):
         """Recorta a area clicavel. Falhou? Fecha — melhor sumir do que virar um
         retangulo invisivel que engole cliques no canto da tela (spec)."""
@@ -222,44 +316,73 @@ class Overlay:
         except Exception:
             Gtk.main_quit()
 
-    def on_message(self, _ucm, result):
-        try:
-            try:
-                raw = result.get_js_value().to_string()
-            except AttributeError:  # WebKit2 mais antigo
-                raw = result.get_value().to_string()
-            msg = json.loads(raw)
-        except Exception:
-            return
+    # --- motor ---------------------------------------------------------------
 
-        kind = msg.get("t")
-        if kind == "hit":
-            rect = (msg["x"] - HIT_PAD, msg["y"] - HIT_PAD,
-                    msg["w"] + 2 * HIT_PAD, msg["h"] + 2 * HIT_PAD)
-            if rect != self.hit:
-                self.set_hitbox(rect)
-        elif kind == "click":
-            self.exiting = True
-            focus_terminal(self.session)
-        elif kind == "done":
-            Gtk.main_quit()
+    def tick(self):
+        self.timer = None
+        if self.phase == "intro":
+            if self.index < len(self.intro):
+                f = self.intro[self.index]
+                self.index += 1
+            else:
+                self.phase, self.index = "loop", 0
+                return self.tick()
+        elif self.phase == "loop":
+            if not self.loop:
+                self.phase, self.index = "exit", 0
+                return self.tick()
+            f = self.loop[self.index % len(self.loop)]
+            self.index += 1
+        else:
+            if self.index < len(self.out):
+                f = self.out[self.index]
+                self.index += 1
+            else:
+                Gtk.main_quit()
+                return False
 
-    def js(self, code):
-        try:
-            self.view.run_javascript(code, None, None, None)
-        except Exception:
-            try:
-                self.view.evaluate_javascript(code, -1, None, None, None, None, None)
-            except Exception:
-                pass
+        self.frame = f
+        self.win.queue_draw()
+
+        # O recorte de clique acompanha o sprite: alvo pequeno que anda e
+        # dificil de acertar, e um recorte parado deixa o clique caindo no vazio.
+        rect = (f["x"] * self.cell - HIT_PAD, f["y"] * self.cell - HIT_PAD,
+                W * self.cell + 2 * HIT_PAD, H * self.cell + 2 * HIT_PAD)
+        if rect != self.hit:
+            self.set_hitbox(rect)
+
+        self.timer = GLib.timeout_add(f.get("ms", 100), self.tick)
+        return False
+
+    def on_click(self, _widget, _event):
+        # O recorte de entrada ja garante que so chega clique em cima do sprite.
+        if self.exiting:
+            return True
+        focus_terminal(self.session)
+        self.begin_exit()
+        return True
 
     def begin_exit(self):
         if self.exiting:
             return False
         self.exiting = True
-        self.js("window.mascotExit && window.mascotExit()")
-        GLib.timeout_add(3000, Gtk.main_quit)  # rede de seguranca
+        if self.timer:
+            GLib.source_remove(self.timer)
+            self.timer = None
+        self.phase, self.index = "exit", 0
+        self.tick()
         return False
+
+
+def parse_color(value):
+    """#rrggbb -> (r, g, b) em 0..1, ou None."""
+    if not value:
+        return None
+    m = re.fullmatch(r"#?([0-9a-fA-F]{6})", value.strip())
+    if not m:
+        return None
+    raw = m.group(1)
+    return tuple(int(raw[i:i + 2], 16) / 255 for i in (0, 2, 4))
 
 
 def supported():
@@ -307,6 +430,7 @@ def main():
     if args.state == "ask" and cfg["ask_timeout"] > 0:
         GLib.timeout_add_seconds(int(cfg["ask_timeout"]), overlay.begin_exit)
 
+    overlay.tick()
     Gtk.main()
 
 

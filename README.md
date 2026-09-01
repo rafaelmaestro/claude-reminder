@@ -70,14 +70,14 @@ Reinicie o serviço (`opencode2 service restart`) ou reabra o TUI. Mesma animaç
 Quase tudo já vem no Ubuntu. Se estiver faltando algo:
 
 ```bash
-sudo apt install python3-gi gir1.2-webkit2-4.1 pipewire-bin sound-theme-freedesktop
+sudo apt install python3-gi pipewire-bin sound-theme-freedesktop
 sudo apt install xdotool                        # se você usa X11
 sudo apt install gir1.2-gtklayershell-0.1       # se você usa Wayland
 ```
 
 | precisa de | por quê |
 | --- | --- |
-| `python3-gi` (GTK 3.0 + WebKit2 4.1) | desenhar e animar o mascote |
+| `python3-gi` (GTK 3.0 + cairo) | desenhar e animar o mascote |
 | `pw-play` (PipeWire) | tocar o som |
 | `sound-theme-freedesktop` | os arquivos de som |
 | **no X11:** `xdotool` | posicionar a janela, achar o monitor em foco, devolver o foco ao terminal |

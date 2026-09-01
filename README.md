@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <sub>X11 · Wayland · Claude Code · zero dependência nova</sub>
+  <sub>X11 · Wayland · Claude Code · OpenCode · zero dependência nova</sub>
 </p>
 
 ---
@@ -35,7 +35,7 @@ o terminal volta pra frente e ele sai andando.
 
 ## Instalação
 
-Dentro do Claude Code:
+### Claude Code
 
 ```
 /plugin marketplace add rafaelmaestro/claude-reminder
@@ -43,6 +43,27 @@ Dentro do Claude Code:
 ```
 
 Reinicie a sessão. Pronto — não tem passo dois.
+
+### OpenCode
+
+No `opencode.json` (global `~/.config/opencode/opencode.json` ou do projeto):
+
+```jsonc
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["github:rafaelmaestro/claude-reminder?path=opencode-mascot"]
+  // ou local: ["./opencode-mascot"] se você clonou o repo
+}
+```
+
+Ou copie o plugin para o diretório auto-carregado:
+
+```bash
+mkdir -p .opencode/plugins
+cp -r opencode-mascot .opencode/plugins/claude-mascot
+```
+
+Reinicie o serviço (`opencode2 service restart`) ou reabra o TUI. Mesma animação, mesmos sons, mesmo `~/.config/claude-mascot/config.json`.
 
 ### Requisitos
 

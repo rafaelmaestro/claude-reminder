@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "states": { "ask": true, "done": true },
+  "mute": false,
+  "volume": 1.0,
+  "ask_timeout": 60,
+  "cell": 7,
+  "sounds": {
+    "ask": "/usr/share/sounds/freedesktop/stereo/message-new-instant.oga",
+    "done": "/usr/share/sounds/freedesktop/stereo/complete.oga"
+  }
+}

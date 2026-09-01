@@ -1,0 +1,24 @@
+{
+  "name": "opencode-claude-mascot",
+  "version": "0.1.0",
+  "description": "O mascote do Claude para o OpenCode — overlay animado em pixel art: chama sua atencao quando precisa de permissao e comemora quando termina.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "keywords": [
+    "opencode",
+    "plugin",
+    "mascot",
+    "overlay",
+    "notification"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "beta"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "typescript": "^5.9.0"
+  }
+}

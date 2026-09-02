@@ -1,5 +1,9 @@
 {
   "name": "claude-mascot",
   "description": "O mascote do Claude aparece no canto do monitor em foco quando o Claude pede permissao ou termina uma tarefa. Clique nele para voltar ao terminal.",
-  "version": "0.1.0"
+  "version": "0.2.0",
+  "author": {
+    "name": "Rafael Maestro",
+    "url": "https://github.com/rafaelmaestro/claude-reminder"
+  }
 }

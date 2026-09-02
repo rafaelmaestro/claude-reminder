@@ -50,7 +50,10 @@ class Sandbox:
         self.root = os.path.join(self.dir, "plugin")
         shutil.copytree(PLUGIN, self.root,
                         ignore=shutil.ignore_patterns("tests", "__pycache__"))
-        for name, body in (("mascot.py", STUB_OVERLAY), ("wm.py", STUB_WM)):
+        # os dois pontos de entrada do overlay: o hook escolhe por plataforma
+        for name, body in (("mascot.py", STUB_OVERLAY),
+                           ("mascot_win32.py", STUB_OVERLAY),
+                           ("wm.py", STUB_WM)):
             p = os.path.join(self.root, "overlay", name)
             open(p, "w").write(body)
             os.chmod(p, 0o755)

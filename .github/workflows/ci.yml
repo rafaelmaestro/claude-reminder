@@ -17,17 +17,9 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq python3-gi gir1.2-gtk-3.0 python3-cairo
-      - name: check das poses e sequencias
-        run: python3 claude-mascot/overlay/check.py
-      - name: contrato do hook (implementacao atual)
-        run: python3 claude-mascot/tests/test_hook.py
-      - name: contrato do hook (bash legado, caminho de rollback)
-        run: python3 claude-mascot/tests/test_hook.py bash %ROOT%/hooks/mascot.sh
-      - name: manifestos validos
-        run: |
-          python3 -c "import json;json.load(open('.claude-plugin/marketplace.json'))"
-          python3 -c "import json;json.load(open('claude-mascot/.claude-plugin/plugin.json'))"
-          python3 -c "import json;json.load(open('claude-mascot/hooks/hooks.json'))"
+      # o mesmo script que roda na maquina de quem contribui, via scripts/check.sh
+      - name: verificacoes do plugin
+        run: ./scripts/check.sh
 
   windows:
     name: windows (o que ja e portavel)

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <sub>X11 · Wayland · Claude Code · OpenCode · zero dependência nova</sub>
+  <sub>X11 · Wayland · Claude Code · OpenCode · zero dependência nova<br><sup>Windows: experimental, ainda não validado por ninguém — veja abaixo</sup></sub>
 </p>
 
 ---
@@ -83,6 +83,7 @@ sudo apt install gir1.2-gtklayershell-0.1       # se você usa Wayland
 | **no X11:** `xdotool` | posicionar a janela, achar o monitor em foco, devolver o foco ao terminal |
 | **no Wayland:** `gtk-layer-shell` | posicionar a janela e mantê-la por cima |
 | **no Wayland:** `hyprctl` (só no Hyprland) | achar o monitor em foco e devolver o foco ao terminal |
+| **no Windows:** `pycairo` | desenhar (a janela usa `user32` via `ctypes`, que já vem no Python) |
 
 O plugin escolhe sozinho entre os dois: quem manda é o `WAYLAND_DISPLAY` (com
 `GDK_BACKEND` por cima, se você forçou). Num compositor Wayland o `DISPLAY`
@@ -95,6 +96,30 @@ vez de abrir uma janela no meio da tela roubando o seu foco.
 
 Sem nenhum servidor gráfico — sessão por SSH, headless — o plugin simplesmente
 não faz nada, sem erro nenhum.
+
+### Windows: experimental
+
+Existe um backend de janela para Windows (`overlay/mascot_win32.py`): janela em
+camadas via `user32` com `ctypes`, alimentada pelo mesmo cairo que desenha no
+Linux. Ele compartilha `painter.py` e `frames.py` com o backend GTK, então a
+arte e a coreografia são as mesmas.
+
+**Ninguém validou isso numa máquina Windows de verdade ainda.** O que a CI
+prova em cada push, num runner `windows-latest`:
+
+- as 19 regras do despachante de hooks passam
+- o mascote é desenhado (os PNGs saem como artefato do build)
+- a janela em camadas abre e a tela é capturada
+
+O que a CI **não** prova, e é justamente o que decide se presta:
+
+- se o clique atravessa fora do sprite (`WM_NCHITTEST` devolvendo `HTTRANSPARENT`)
+- se a janela rouba o foco enquanto você digita (`WS_EX_NOACTIVATE`)
+- se o `hooks.json` funciona: ele chama `python3`, que no Windows normalmente se
+  chama `python` — isso quase certamente ainda precisa de ajuste
+- se o som sai (`winsound` só toca WAV; os `.oga` do freedesktop não existem lá)
+
+Se você usa Windows e quer ajudar, tem uma issue aberta pedindo exatamente isso.
 
 ---
 
@@ -145,8 +170,9 @@ Arquivo ausente ou com JSON inválido: usa os padrões e segue funcionando.
 
 ## Limitações conhecidas
 
-- Linux apenas: X11, ou Wayland com `wlr-layer-shell` (não o GNOME). macOS e
-  Windows não.
+- Linux (X11, ou Wayland com `wlr-layer-shell` — não o GNOME) é o único
+  ambiente validado. Windows é experimental e não foi testado por ninguém;
+  macOS não existe.
 - **No Wayland fora do Hyprland**, o mascote aparece e anima, mas o monitor
   vira palpite do compositor (normalmente o que está em foco, sem garantia) e o
   clique só dispensa o mascote em vez de trazer o terminal de volta. Não existe

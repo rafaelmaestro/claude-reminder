@@ -1,0 +1,49 @@
+name: ci
+
+# Roda em todo push e em todo PR. O objetivo numero um nao e o Windows: e nao
+# deixar ninguem quebrar o X11 e o Wayland que ja funcionam.
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  linux:
+    name: linux (guarda do X11 e do Wayland)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: dependencias graficas
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq python3-gi gir1.2-gtk-3.0 python3-cairo
+      - name: check das poses e sequencias
+        run: python3 claude-mascot/overlay/check.py
+      - name: contrato do hook (implementacao atual)
+        run: python3 claude-mascot/tests/test_hook.py
+      - name: contrato do hook (bash legado, caminho de rollback)
+        run: python3 claude-mascot/tests/test_hook.py bash %ROOT%/hooks/mascot.sh
+      - name: manifestos validos
+        run: |
+          python3 -c "import json;json.load(open('.claude-plugin/marketplace.json'))"
+          python3 -c "import json;json.load(open('claude-mascot/.claude-plugin/plugin.json'))"
+          python3 -c "import json;json.load(open('claude-mascot/hooks/hooks.json'))"
+
+  windows:
+    name: windows (o que ja e portavel)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: tudo compila
+        run: python -m compileall -q claude-mascot
+      - name: contrato do hook
+        run: python claude-mascot/tests/test_hook.py
+      # check.py importa mascot.py, que importa gi e cairo: so roda com
+      # PyGObject, que nao existe no runner. Quando houver backend de janela
+      # para Windows, este passo passa a rodar tambem.
+      - name: overlay ainda nao roda aqui (esperado)
+        run: |
+          python -c "import sys; sys.path.insert(0,'claude-mascot/overlay'); import poses, frames; print('logica pura ok: %d poses' % len(poses.POSES))"

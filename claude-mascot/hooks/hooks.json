@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/mascot.sh\" session-start",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" session-start",
             "timeout": 5
           }
         ]
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/mascot.sh\" show ask",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" show ask",
             "timeout": 5
           }
         ]
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/mascot.sh\" show ask",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" show ask",
             "timeout": 5
           }
         ]
@@ -41,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/mascot.sh\" show ask",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" show ask",
             "timeout": 5
           }
         ]
@@ -52,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/mascot.sh\" dismiss",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" dismiss",
             "timeout": 5
           }
         ]
@@ -63,7 +63,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/mascot.sh\" show done",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/hook.py\" show done",
             "timeout": 5
           }
         ]

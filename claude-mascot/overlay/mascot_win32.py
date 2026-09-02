@@ -104,7 +104,7 @@ class Overlay:
         self.hit = None
         self.leaving = False
 
-        self.seq = frames.sequence(state, variant)
+        self.intro, self.loop, self.out = frames.sequence(state, variant)
         self.phase, self.i = "intro", 0
 
         self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, self.w, self.h)
@@ -191,18 +191,18 @@ class Overlay:
     def tick(self):
         f = None
         if self.phase == "intro":
-            if self.i < len(self.seq["intro"]):
-                f = self.seq["intro"][self.i]; self.i += 1
+            if self.i < len(self.intro):
+                f = self.intro[self.i]; self.i += 1
             else:
                 self.phase, self.i = "loop", 0
         if f is None and self.phase == "loop":
-            if not self.seq["loop"]:
+            if not self.loop:
                 self.phase, self.i = "exit", 0
             else:
-                f = self.seq["loop"][self.i % len(self.seq["loop"])]; self.i += 1
+                f = self.loop[self.i % len(self.loop)]; self.i += 1
         if f is None and self.phase == "exit":
-            if self.i < len(self.seq["exit"]):
-                f = self.seq["exit"][self.i]; self.i += 1
+            if self.i < len(self.out):
+                f = self.out[self.i]; self.i += 1
             else:
                 user32.DestroyWindow(self.hwnd)
                 return
@@ -255,9 +255,9 @@ def main():
     if args.shot:   # modo sem janela: so prova que o desenho funciona aqui
         cell = max(3, int(cfg["cell"]))
         surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, COLS * cell, ROWS * cell)
-        seq = frames.sequence(args.state, args.variant)
+        intro, loop, _ = frames.sequence(args.state, args.variant)
         pt = painter.Painter(cell, (0.106, 0.106, 0.133))
-        pt.draw(cairo.Context(surf), (seq["loop"] or seq["intro"])[-1])
+        pt.draw(cairo.Context(surf), (loop or intro)[-1])
         surf.write_to_png(args.shot)
         return 0
 

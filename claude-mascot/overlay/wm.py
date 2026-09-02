@@ -4,22 +4,25 @@
 O resto do plugin so fala com estas funcoes. Um compositor novo vira um ramo
 neste arquivo, nao um `if` espalhado entre o hook e o overlay.
 
-Tres backends:
+Quatro backends:
 
     x11       xdotool faz tudo (posicao, monitor em foco, ativar janela)
     hyprland  hyprctl responde quem esta em foco; a posicao vem do layer-shell
     wayland   generico: layer-shell posiciona, o resto degrada em silencio
+    win32     user32 via ctypes; a janela em si mora em mascot_win32.py
 
 Tambem roda como CLI, para o hook em bash nao depender de jq:
 
     python3 wm.py record <arquivo>   # grava a janela em foco agora
 """
+import ctypes
 import json
 import os
 import subprocess
 import sys
 
 HYPR_ENV = "HYPRLAND_INSTANCE_SIGNATURE"
+WINDOWS = os.name == "nt"
 
 
 def backend():
@@ -29,6 +32,8 @@ def backend():
     presenca de DISPLAY nao prova X11: quem decide e o WAYLAND_DISPLAY, com o
     GDK_BACKEND por cima quando o usuario forcou um dos dois.
     """
+    if WINDOWS:
+        return "win32"
     forced = os.environ.get("GDK_BACKEND", "").split(",")[0].strip()
     if forced == "x11":
         return "x11" if os.environ.get("DISPLAY") else ""
@@ -64,6 +69,9 @@ def _hypr(*args):
 
 def active_window():
     kind = backend()
+    if kind == "win32":
+        hwnd = ctypes.windll.user32.GetForegroundWindow()
+        return "win32:%d" % hwnd if hwnd else ""
     if kind == "hyprland":
         addr = (_hypr("activewindow") or {}).get("address") or ""
         return "hypr:" + addr if addr.startswith("0x") else ""
@@ -86,6 +94,16 @@ def focus_window(token):
     if not ident:  # arquivo de sessao antigo: id nu do X11
         kind, ident = "x11", token
 
+    if kind == "win32" and backend() == "win32":
+        user32 = ctypes.windll.user32
+        try:
+            hwnd = int(ident)
+        except ValueError:
+            return False
+        if not user32.IsWindow(hwnd):
+            return False
+        user32.ShowWindow(hwnd, 9)          # SW_RESTORE, caso esteja minimizada
+        return bool(user32.SetForegroundWindow(hwnd))
     if kind == "hypr" and backend() == "hyprland":
         clients = _hypr("clients") or []
         if not any(c.get("address") == ident for c in clients):
@@ -141,6 +159,35 @@ def active_monitor(display):
         except Exception:
             return None
     return None  # wayland generico: sem protocolo padrao para "quem esta em foco"
+
+
+# No Windows nao ha Gdk: o retangulo do monitor vem direto do user32, e quem
+# consome e o mascot_win32.py. As funcoes acima continuam recebendo um display
+# do GDK, entao o caminho X11/Wayland nao muda em nada.
+
+
+def win32_monitor_rect():
+    """(x, y, largura, altura) do monitor da janela em foco, ou o primario."""
+    user32 = ctypes.windll.user32
+
+    class RECT(ctypes.Structure):
+        _fields_ = [("left", ctypes.c_long), ("top", ctypes.c_long),
+                    ("right", ctypes.c_long), ("bottom", ctypes.c_long)]
+
+    class MONITORINFO(ctypes.Structure):
+        _fields_ = [("cbSize", ctypes.c_ulong), ("rcMonitor", RECT),
+                    ("rcWork", RECT), ("dwFlags", ctypes.c_ulong)]
+
+    MONITOR_DEFAULTTOPRIMARY = 1
+    hwnd = user32.GetForegroundWindow()
+    hmon = user32.MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY)
+    info = MONITORINFO()
+    info.cbSize = ctypes.sizeof(MONITORINFO)
+    if not user32.GetMonitorInfoW(hmon, ctypes.byref(info)):
+        return (0, 0, user32.GetSystemMetrics(0), user32.GetSystemMetrics(1))
+    # rcWork exclui a barra de tarefas: o mascote nao deve nascer atras dela.
+    r = info.rcWork
+    return (r.left, r.top, r.right - r.left, r.bottom - r.top)
 
 
 def fallback_monitor(display):

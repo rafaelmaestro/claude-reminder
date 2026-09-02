@@ -100,7 +100,9 @@ def kill_overlay():
 
 def spawn_overlay(state, sid):
     """Desacopla o overlay: o hook nao pode ficar preso ate a animacao acabar."""
-    cmd = [sys.executable, os.path.join(ROOT, "overlay", "mascot.py"),
+    # GTK no X11/Wayland, user32 no Windows — mesma coreografia, mesmo desenho.
+    entry = "mascot_win32.py" if WINDOWS else "mascot.py"
+    cmd = [sys.executable, os.path.join(ROOT, "overlay", entry),
            "--state", state, "--session", sid]
     kwargs = {"stdout": subprocess.DEVNULL, "stderr": subprocess.DEVNULL,
               "stdin": subprocess.DEVNULL, "cwd": ROOT}

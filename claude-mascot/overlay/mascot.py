@@ -30,6 +30,8 @@ import cairo  # noqa: E402
 import frames  # noqa: E402
 import wm  # noqa: E402
 from poses import GRID, POSES, PROPS, SYMBOLS  # noqa: E402
+from painter import PAL, GROUND, SHADOW, Painter, rows  # noqa: E402,F401
+from config import CACHE, CONFIG, DEFAULTS, SOUNDS, load_config  # noqa: E402,F401
 
 # No Wayland a janela nao escolhe onde nasce — o compositor escolhe. O
 # wlr-layer-shell devolve essa escolha para o cliente, e o gtk-layer-shell e o
@@ -41,14 +43,6 @@ except (ValueError, ImportError):
     GtkLayerShell = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-CACHE = os.path.join(
-    os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "claude-mascot"
-)
-CONFIG = os.path.join(
-    os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
-    "claude-mascot",
-    "config.json",
-)
 
 # Tamanho da faixa em celulas. A faixa e maior que o mascote porque ele entra e
 # sai andando dentro dela — mover a janela GTK a cada frame engasga no X11.
@@ -59,61 +53,6 @@ HIT_PAD = 8  # alvo pequeno em movimento precisa de folga de clique
 W, H = GRID["w"], GRID["h"]
 SW, SH = GRID["sw"], GRID["sh"]
 PW, PH, POFF = GRID["pw"], GRID["ph"], GRID["poff"]
-
-# Um caractere por celula (design D5). None e vazio.
-PAL = {
-    ".": None,
-    "O": (0xD9, 0x77, 0x57),  # corpo
-    "K": (0x19, 0x19, 0x19),  # olhos
-    "W": (0xFF, 0xFF, 0xFF),
-    "G": (0x2B, 0xA8, 0x4A),  # check
-    "P": (0x6B, 0x4F, 0xD8),  # interrogacao
-    "B": (0x1F, 0x4E, 0x8C),  # fone
-    "Y": (0xF0, 0xB2, 0x3C),  # capacete, lampada
-    "A": (0x9A, 0x9A, 0x9A),  # metal
-    "R": (0xE0, 0x31, 0x31),  # coracao
-    "N": (0x8A, 0x5A, 0x3B),  # madeira do bau
-}
-
-SHADOW = (0, 0, 0, 0.35)   # sombra dura, sem desfoque: idioma pixel art
-GROUND = (0, 0, 0, 0.22)   # a marca no chao, que nao sobe junto no pulo
-
-DEFAULTS = {
-    "enabled": True,
-    "states": {"ask": True, "done": True},
-    "mute": False,
-    "volume": 1.0,
-    "ask_timeout": 60,
-    "cell": 7,
-    "sounds": {},
-}
-
-# window-question.oga e symlink de dialog-warning.oga: um blip surdo que passa
-# despercebido. message-new-instant tem ataque e brilho — e o que faz virar a
-# cabeca. Trocavel pelo config.
-SOUNDS = {
-    "ask": "/usr/share/sounds/freedesktop/stereo/message-new-instant.oga",
-    "done": "/usr/share/sounds/freedesktop/stereo/complete.oga",
-}
-
-
-def load_config():
-    cfg = json.loads(json.dumps(DEFAULTS))
-    try:
-        with open(CONFIG) as fh:
-            user = json.load(fh)
-        if isinstance(user, dict):
-            states = user.pop("states", None)
-            sounds = user.pop("sounds", None)
-            cfg.update({k: v for k, v in user.items() if k in cfg})
-            if isinstance(states, dict):
-                cfg["states"].update(states)
-            if isinstance(sounds, dict):
-                cfg["sounds"].update(sounds)
-    except Exception:
-        pass  # ausente, ilegivel ou invalido: valores padrao (spec)
-    return cfg
-
 
 def play_sound(state, cfg):
     if cfg["mute"]:
@@ -142,10 +81,6 @@ def focus_terminal(session):
         pass  # sessao sem janela registrada: o clique so dispensa o mascote
 
 
-def rows(block):
-    return block.strip("\n").split("\n")
-
-
 class Overlay:
     def __init__(self, state, session, cfg, variant=None, bg=None):
         self.state = state
@@ -154,8 +89,8 @@ class Overlay:
         self.cell = max(3, int(cfg["cell"]))
         self.w = COLS * self.cell
         self.h = ROWS * self.cell
-        self.shadow = max(2, round(self.cell * 0.45))
         self.bg = parse_color(bg)  # fundo opaco: so para gravar o GIF
+        self.painter = Painter(self.cell, self.bg)
         self.hit = None
         self.exiting = False
         self.frame = None
@@ -231,72 +166,8 @@ class Overlay:
     # --- desenho -------------------------------------------------------------
 
     def on_draw(self, _widget, cr):
-        # Uma faixa limpa por quadro. Este zero e o conserto do rastro: com
-        # OPERATOR_SOURCE o alfa e escrito, nao misturado — pintar transparente
-        # por cima com o operador padrao nao apagaria nada.
-        cr.set_operator(cairo.OPERATOR_SOURCE)
-        if self.bg:
-            cr.set_source_rgb(*self.bg)
-        else:
-            cr.set_source_rgba(0, 0, 0, 0)
-        cr.paint()
-        cr.set_operator(cairo.OPERATOR_OVER)
-
-        f = self.frame
-        if f is None:
-            return False
-
-        if f.get("ground"):
-            wide = f["ground"] == "wide"
-            cr.set_source_rgba(*GROUND)
-            cr.rectangle((f["x"] + (2 if wide else 4)) * self.cell,
-                         frames.GROUND_Y * self.cell,
-                         (11 if wide else 7) * self.cell, self.cell)
-            cr.fill()
-
-        # Ordem de empilhamento: simbolo atras do corpo, adereco na frente dele.
-        if f.get("sym"):
-            self.blit(cr, SYMBOLS[f["sym"]], SW, SH,
-                      f["x"] + 4 + f.get("symDx", 0),
-                      f["y"] - 5 + f.get("symDy", 0))
-        self.blit(cr, POSES[f["p"]], W, H, f["x"], f["y"], f.get("flip"))
-        # Adereco anda colado no corpo: mesma coluna, POFF linhas acima. Nunca
-        # espelha — inverter jogaria a varinha dentro do corpo.
-        if f.get("prop"):
-            self.blit(cr, PROPS[f["prop"]], PW, PH, f["x"], f["y"] - POFF)
+        self.painter.draw(cr, self.frame)
         return False
-
-    def blit(self, cr, block, w, h, ox, oy, flip=False):
-        """Desenha um bloco de arte: a silhueta deslocada e, por cima, as cores.
-
-        Duas passadas porque a sombra e da silhueta inteira — desenhar sombra e
-        cor celula a celula deixaria a sombra de uma celula por cima da cor da
-        vizinha.
-        """
-        art = rows(block)
-        cell = self.cell
-        shade = self.shadow
-
-        cr.set_source_rgba(*SHADOW)
-        for y in range(h):
-            row = art[y] if y < len(art) else ""
-            for x in range(w):
-                sx = w - 1 - x if flip else x
-                if sx < len(row) and PAL.get(row[sx]):
-                    cr.rectangle((ox + x) * cell + shade,
-                                 (oy + y) * cell + shade, cell, cell)
-        cr.fill()
-
-        for y in range(h):
-            row = art[y] if y < len(art) else ""
-            for x in range(w):
-                sx = w - 1 - x if flip else x
-                ink = PAL.get(row[sx]) if sx < len(row) else None
-                if not ink:
-                    continue
-                cr.set_source_rgb(ink[0] / 255, ink[1] / 255, ink[2] / 255)
-                cr.rectangle((ox + x) * cell, (oy + y) * cell, cell, cell)
-                cr.fill()
 
     def set_hitbox(self, rect):
         """Recorta a area clicavel. Falhou? Fecha — melhor sumir do que virar um

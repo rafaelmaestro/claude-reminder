@@ -1,9 +1,14 @@
-import { Plugin } from "@opencode-ai/plugin"
 import { spawn } from "node:child_process"
 import * as fs from "node:fs"
 import * as path from "node:path"
 import * as os from "node:os"
 import { fileURLToPath } from "node:url"
+
+// ---------------------------------------------------------------------------
+// Shared core: no OpenCode SDK imports here, so this module loads under both
+// the v1 runtime (opencode 1.x, hooks-object API) and the v2 runtime
+// (opencode2 beta, Plugin.define API).
+// ---------------------------------------------------------------------------
 
 function getCacheDir(): string {
   const base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), ".cache")
@@ -131,9 +136,81 @@ function show(state: "ask" | "done", sessionID: string, cacheDir: string, overla
   } catch {}
 }
 
-export default Plugin.define({
-  id: "opencode-mascot",
-  async setup(ctx) {
+// ---------------------------------------------------------------------------
+// v1 runtime (opencode 1.x): the module exports plugin functions that receive
+// a context and return a hooks object. No SDK value import — v1's package has
+// no runtime `Plugin` export, so even a static `import { Plugin }` would fail
+// at load time. Plain `any` keeps this callable under both SDKs.
+// Differences from v2: events carry `properties` (not `data`), there is no
+// `permission.asked` event (the ask signal is the `permission.ask` hook), and
+// `session.created` carries the session at `properties.info.id`.
+// ---------------------------------------------------------------------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const OpencodeMascot = async (_input: any): Promise<any> => {
+  const cacheDir = ensureCache()
+  const overlayDir = getOverlayDir()
+
+  return {
+    // Earliest ask signal on v1: fires when a tool needs permission.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    "permission.ask": async (input: any) => {
+      const sid = (input?.sessionID as string) || "default"
+      show("ask", sid, cacheDir, overlayDir)
+    },
+    // Approved and ran (PostToolUse equivalent): dismiss a lingering ask.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    "tool.execute.after": async (_input: any) => {
+      dismissIfAsk(cacheDir)
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    event: async ({ event }: any) => {
+      const type = event?.type as string | undefined
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const props = (event?.properties ?? {}) as Record<string, any>
+      if (type === "session.created") {
+        const sid = (props?.info?.id as string) || "default"
+        recordWindow(sid, cacheDir, overlayDir)
+      } else if (type === "session.idle") {
+        const sid = (props?.sessionID as string) || "default"
+        show("done", sid, cacheDir, overlayDir)
+      } else if (type === "permission.replied") {
+        const reply = props?.response as string | undefined
+        if (reply === "once" || reply === "always") {
+          dismissIfAsk(cacheDir)
+        }
+      } else if (type === "session.status") {
+        const status = (props?.status as { type?: string } | undefined)?.type
+        if (status === "busy") {
+          dismissIfAsk(cacheDir)
+        }
+      }
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// v2 runtime (opencode2 beta): the module default-exports Plugin.define().
+// The SDK is imported lazily: under v1 the package has no runtime `Plugin`
+// export, so a static import would break module load there. If the v2 API is
+// unavailable we export a stub with just the id, which the v2 loader ignores.
+// ---------------------------------------------------------------------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const sdk: any = await import("@opencode-ai/plugin").catch(() => undefined)
+const V2Plugin = sdk?.Plugin as
+  | { define: (p: unknown) => unknown }
+  | undefined
+
+function createV2Setup() {
+  return async (ctx: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    permission?: { hook: (name: string, cb: (e: any) => unknown) => Promise<{ dispose(): Promise<void> }> }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    event: { subscribe: (opts: unknown) => AsyncIterable<{ type: string; data: Record<string, unknown> }> }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tool?: { hook: (name: string, cb: (e: any) => unknown) => Promise<{ dispose(): Promise<void> }> }
+  }) => {
     const cacheDir = ensureCache()
     const overlayDir = getOverlayDir()
 
@@ -142,7 +219,7 @@ export default Plugin.define({
     // let the event dedupe handle duplicates.
     let permHook: { dispose(): Promise<void> } | undefined
     try {
-      permHook = await ctx.permission.hook("evaluate", async (event) => {
+      permHook = await ctx.permission?.hook("evaluate", async (event) => {
         if (event.effect === "ask") {
           show("ask", event.sessionID, cacheDir, overlayDir)
         }
@@ -196,7 +273,7 @@ export default Plugin.define({
     // so this also covers the "approved and ran" case.
     let toolAfter: { dispose(): Promise<void> } | undefined
     try {
-      toolAfter = await ctx.tool.hook("execute.after", async (_event) => {
+      toolAfter = await ctx.tool?.hook("execute.after", async (_event) => {
         dismissIfAsk(cacheDir)
       })
     } catch {}
@@ -213,5 +290,14 @@ export default Plugin.define({
         await toolAfter?.dispose()
       } catch {}
     }
-  },
-})
+  }
+}
+
+const v2Plugin = V2Plugin
+  ? V2Plugin.define({
+      id: "opencode-mascot",
+      setup: createV2Setup(),
+    })
+  : { id: "opencode-mascot" }
+
+export default v2Plugin

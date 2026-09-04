@@ -1,0 +1,33 @@
+{
+  "name": "opencode-mascot",
+  "version": "0.1.0",
+  "description": "Mascote do OpenCode — overlay animado em pixel art nas cores da marca (grafite #4B4646 / #CFCECD): chama sua atencao quando precisa de permissao e comemora quando termina. Instalavel via `github:rafaelmaestro/claude-reminder` (o instalador do opencode2 usa npm e le o package.json da raiz do repo).",
+  "type": "module",
+  "exports": {
+    ".": "./opencode-mascot/src/index.ts"
+  },
+  "files": [
+    "opencode-mascot/src",
+    "opencode-mascot/overlay",
+    "opencode-mascot/config.example.json"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p opencode-mascot/tsconfig.json"
+  },
+  "keywords": [
+    "opencode",
+    "opencode2",
+    "plugin",
+    "mascot",
+    "overlay",
+    "notification"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@opencode-ai/plugin": "0.0.0-beta-18965"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.0",
+    "typescript": "^5.9.0"
+  }
+}

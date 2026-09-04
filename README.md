@@ -46,15 +46,38 @@ Reinicie a sessão. Pronto — não tem passo dois.
 
 ### OpenCode
 
-No `opencode.json` (global `~/.config/opencode/opencode.json` ou do projeto):
+No `opencode.json` (global `~/.config/opencode/opencode.json` ou do projeto).
+O mesmo pacote serve os dois runtimes — o módulo exporta a função de plugin
+da v1 (`OpencodeMascot`, objeto de hooks) e o `Plugin.define` da v2 (default):
 
 ```jsonc
+// opencode2 — chave `plugins` (plural)
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": ["github:rafaelmaestro/claude-reminder?path=opencode-mascot"]
-  // ou local: ["./opencode-mascot"] se você clonou o repo
+  "plugins": ["github:rafaelmaestro/claude-reminder"]
+}
+// opencode v1 — chave `plugin` (singular)
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["github:rafaelmaestro/claude-reminder"]
 }
 ```
+
+Detalhes que quebram a instalação silenciosamente (o mascote nunca aparece e
+o TUI não mostra erro — só o log do serviço):
+
+- **Sem `?path=`**: o instalador do opencode2 baixa via npm, que sempre lê o
+  `package.json` da **raiz** do repo e ignora `?path=...` (isso é sintaxe do
+  Bun, não do npm). A raiz do repo tem um `package.json` (`opencode-mascot`)
+  que reexporta `./opencode-mascot/src/index.ts`. Usar
+  `github:...?path=opencode-mascot` falha com `NpmInstallFailedError`.
+- **Uma chave por runtime**: `plugin` (v1) e `plugins` (v2) com a mesma
+  entrada fazem o opencode2 tentar instalar duas vezes. Use só a chave do
+  seu runtime.
+- **Eventos diferentes**: na v1 os eventos vêm em `properties` (sem
+  `permission.asked` — o aviso de permissão chega pelo hook `permission.ask`)
+  e a sessão criada traz o id em `properties.info.id`; na v2 vêm em `data`.
+  O plugin trata os dois formatos.
 
 Ou copie o plugin para o diretório auto-carregado:
 

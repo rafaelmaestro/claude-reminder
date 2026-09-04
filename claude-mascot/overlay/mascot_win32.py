@@ -49,7 +49,72 @@ HWND_TOPMOST = -1
 
 user32 = ctypes.windll.user32
 gdi32 = ctypes.windll.gdi32
+kernel32 = ctypes.windll.kernel32
 user32.SetProcessDPIAware()
+
+# Sem argtypes/restype, ctypes adivinha c_int (32 bits) para tudo. Em Windows
+# de 64 bits, handles e ponteiros (HINSTANCE, HWND, HDC...) passam de 2^31 e
+# o ctypes estoura com "OverflowError: int too long to convert" na marcacao
+# implicita — foi o que aconteceu com hInstance em CreateWindowExW.
+kernel32.GetModuleHandleW.argtypes = [wintypes.LPCWSTR]
+kernel32.GetModuleHandleW.restype = wintypes.HMODULE
+
+user32.RegisterClassW.argtypes = [ctypes.c_void_p]
+user32.RegisterClassW.restype = wintypes.ATOM
+
+user32.CreateWindowExW.argtypes = [
+    wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+    wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID]
+user32.CreateWindowExW.restype = wintypes.HWND
+
+user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+user32.DefWindowProcW.restype = ctypes.c_long
+
+user32.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int,
+                                ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT]
+user32.SetWindowPos.restype = wintypes.BOOL
+
+user32.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+user32.ShowWindow.restype = wintypes.BOOL
+
+user32.GetDC.argtypes = [wintypes.HWND]
+user32.GetDC.restype = wintypes.HDC
+
+gdi32.CreateCompatibleDC.argtypes = [wintypes.HDC]
+gdi32.CreateCompatibleDC.restype = wintypes.HDC
+
+gdi32.CreateDIBSection.argtypes = [wintypes.HDC, ctypes.c_void_p, wintypes.UINT,
+                                   ctypes.POINTER(ctypes.c_void_p), wintypes.HANDLE, wintypes.DWORD]
+gdi32.CreateDIBSection.restype = wintypes.HBITMAP
+
+gdi32.SelectObject.argtypes = [wintypes.HDC, wintypes.HGDIOBJ]
+gdi32.SelectObject.restype = wintypes.HGDIOBJ
+
+user32.UpdateLayeredWindow.argtypes = [
+    wintypes.HWND, wintypes.HDC, ctypes.c_void_p, ctypes.c_void_p,
+    wintypes.HDC, ctypes.c_void_p, wintypes.COLORREF, ctypes.c_void_p, wintypes.DWORD]
+user32.UpdateLayeredWindow.restype = wintypes.BOOL
+
+user32.SetTimer.argtypes = [wintypes.HWND, wintypes.WPARAM, wintypes.UINT, ctypes.c_void_p]
+user32.SetTimer.restype = wintypes.WPARAM
+
+user32.DestroyWindow.argtypes = [wintypes.HWND]
+user32.DestroyWindow.restype = wintypes.BOOL
+
+user32.ScreenToClient.argtypes = [wintypes.HWND, ctypes.c_void_p]
+user32.ScreenToClient.restype = wintypes.BOOL
+
+user32.GetMessageW.argtypes = [ctypes.c_void_p, wintypes.HWND, wintypes.UINT, wintypes.UINT]
+user32.GetMessageW.restype = ctypes.c_int
+
+user32.TranslateMessage.argtypes = [ctypes.c_void_p]
+user32.TranslateMessage.restype = wintypes.BOOL
+
+user32.DispatchMessageW.argtypes = [ctypes.c_void_p]
+user32.DispatchMessageW.restype = ctypes.c_long
+
+user32.PostQuitMessage.argtypes = [ctypes.c_int]
 
 
 class BLENDFUNCTION(ctypes.Structure):
@@ -116,7 +181,7 @@ class Overlay:
     def _create_window(self):
         cls = WNDCLASS()
         cls.lpfnWndProc = self._proc
-        cls.hInstance = ctypes.windll.kernel32.GetModuleHandleW(None)
+        cls.hInstance = kernel32.GetModuleHandleW(None)
         cls.lpszClassName = "ClaudeMascotOverlay"
         user32.RegisterClassW(ctypes.byref(cls))
 
@@ -152,7 +217,11 @@ class Overlay:
         exatamente o que UpdateLayeredWindow espera: da para copiar direto."""
         self.painter.draw(self.cr, self.frame)
         self.surface.flush()
-        ctypes.memmove(self.bits, self.surface.get_data(), self.w * self.h * 4)
+        n = self.w * self.h * 4
+        data = self.surface.get_data()
+        # memmove nao aceita memoryview puro como origem (so tipos ctypes ou
+        # bytes/bytearray) — from_buffer expoe o mesmo buffer sem copiar.
+        ctypes.memmove(self.bits, (ctypes.c_char * n).from_buffer(data), n)
 
         size = wintypes.SIZE(self.w, self.h)
         src = wintypes.POINT(0, 0)
